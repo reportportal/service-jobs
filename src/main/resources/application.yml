@@ -1,0 +1,11 @@
+management:
+  endpoints:
+    web:
+      base-path: '/'
+  endpoint:
+    info:
+      enabled: true
+
+server:
+  port: 8686
+
