@@ -17,6 +17,10 @@ apply from: "$scriptsUrl/release-service.gradle"
 
 sourceCompatibility = '11'
 
+bootJar {
+    project.hasProperty('gcp') ? getArchiveFileName().set('app.jar') : archiveClassifier.set('exec')
+}
+
 repositories {
     mavenCentral()
 }
