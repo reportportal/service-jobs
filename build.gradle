@@ -62,18 +62,18 @@ publishing {
                 usage('java-runtime') {
                     fromResolutionResult()
                 }
-                from components.java
-                groupId 'com.epam.reportportal'
-                artifactId "$project.name"
-
-                pom.withXml {
-                    def root = asNode()
-                    root.children().last() + pomConfig
-                }
-                artifact sourcesJar
-                artifact javadocJar
-                artifact bootJar
             }
+
+            groupId 'com.epam.reportportal'
+            artifactId "$project.name"
+
+            pom.withXml {
+                def root = asNode()
+                root.children().last() + pomConfig
+            }
+            artifact sourcesJar
+            artifact javadocJar
+            artifact bootJar
         }
     }
 }
