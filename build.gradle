@@ -23,6 +23,7 @@ bootJar {
 
 repositories {
     mavenCentral()
+    releaseMode ? maven { url "http://dl.bintray.com/epam/reportportal" } : maven { url 'https://jitpack.io' }
 }
 
 processResources {
