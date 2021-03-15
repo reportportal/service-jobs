@@ -32,6 +32,12 @@ processResources {
     }
 }
 
+dependencyManagement {
+    imports {
+        mavenBom(releaseMode ? 'com.epam.reportportal:commons-bom:' + getProperty('bom.version') : 'com.github.reportportal:commons-bom:7ea4bf3')
+    }
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
@@ -43,3 +49,9 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+addDockerfileToGit.dependsOn createDockerfile
+beforeReleaseBuild.dependsOn addDockerfileToGit
+bintrayUpload.mustRunAfter build
+afterReleaseBuild.dependsOn bintrayUpload
+checkCommitNeeded.dependsOn removeScripts
