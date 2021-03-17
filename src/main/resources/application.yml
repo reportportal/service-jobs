@@ -1,3 +1,7 @@
+spring:
+  flyway:
+    enabled: false
+
 management:
   endpoints:
     web:
@@ -8,4 +12,39 @@ management:
 
 server:
   port: 8686
+
+rp:
+  environment:
+    variable:
+      clean:
+        project:
+          cron: '0 * * * * *'
+
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driverClassName: org.postgresql.Driver
+    jdbcUrl: ${rp.db.url}
+    username: ${rp.db.user}
+    password: ${rp.db.pass}
+    maximumPoolSize: 27
+
+  db:
+    url: jdbc:postgresql://${rp.db.host}:${rp.db.port}/${rp.db.name}
+    name: reportportal
+    host: localhost
+    port: 5432
+    user: rpuser
+    pass: rppass
+
+  binarystore:
+    path: /data/storage
+    minio:
+      endpoint: http://localhost:9000
+      accessKey: minio
+      secretKey: minio123
+      bucketPrefix: prj-
+      defaultBucketName: rp-bucket
+    # could be one of [filesystem, minio]
+    type: minio
+
 
