@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Service
 public class CleanLogService implements CleanupService {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(CleanLogService.class);
+	private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
 	@Override
 	@Transactional(propagation = Propagation.REQUIRES_NEW)

@@ -23,7 +23,7 @@ import static java.time.Duration.ofSeconds;
 @Service
 public class CleanAttachmentsService implements CleanupService {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(CleanAttachmentsService.class);
+	private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
 	private static final String MOVING_QUERY = "WITH moved_rows AS (DELETE FROM attachment WHERE project_id = :id AND creation_date <= :date::TIMESTAMP RETURNING *) INSERT INTO attachment_tombstone SELECT * FROM moved_rows;";
 
