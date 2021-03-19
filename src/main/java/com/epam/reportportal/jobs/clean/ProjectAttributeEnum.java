@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.jobs.entity;
+package com.epam.reportportal.jobs.clean;
 
 /**
  * Enum with a list of basic required project parameters
