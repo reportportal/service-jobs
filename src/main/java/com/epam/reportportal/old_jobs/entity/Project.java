@@ -1,4 +1,4 @@
-package com.epam.reportportal.jobs.entity;
+package com.epam.reportportal.old_jobs.entity;
 
 import java.util.HashSet;
 import java.util.Set;

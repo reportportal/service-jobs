@@ -1,4 +1,4 @@
-package com.epam.reportportal.jobs.entity;
+package com.epam.reportportal.old_jobs.entity;
 
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>

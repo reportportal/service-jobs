@@ -1,4 +1,4 @@
-package com.epam.reportportal.jobs.config;
+package com.epam.reportportal.config;
 
 import net.javacrumbs.shedlock.core.LockProvider;
 import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider;

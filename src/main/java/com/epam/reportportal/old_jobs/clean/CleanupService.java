@@ -1,6 +1,6 @@
-package com.epam.reportportal.jobs.clean;
+package com.epam.reportportal.old_jobs.clean;
 
-import com.epam.reportportal.jobs.entity.Project;
+import com.epam.reportportal.old_jobs.entity.Project;
 
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>

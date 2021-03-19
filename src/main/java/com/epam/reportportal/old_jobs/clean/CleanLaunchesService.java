@@ -1,6 +1,6 @@
-package com.epam.reportportal.jobs.clean;
+package com.epam.reportportal.old_jobs.clean;
 
-import com.epam.reportportal.jobs.entity.Project;
+import com.epam.reportportal.old_jobs.entity.Project;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
 @Service
-public class CleanLogService implements CleanupService {
+public class CleanLaunchesService implements CleanupService {
 
 	private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
@@ -27,6 +27,6 @@ public class CleanLogService implements CleanupService {
 
 	@Override
 	public int order() {
-		return 1;
+		return 2;
 	}
 }

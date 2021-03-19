@@ -1,8 +1,8 @@
-package com.epam.reportportal.jobs.clean;
+package com.epam.reportportal.old_jobs.clean;
 
-import com.epam.reportportal.jobs.entity.Attribute;
-import com.epam.reportportal.jobs.entity.Project;
-import com.epam.reportportal.jobs.entity.ProjectAttributeEnum;
+import com.epam.reportportal.old_jobs.entity.Attribute;
+import com.epam.reportportal.old_jobs.entity.Project;
+import com.epam.reportportal.old_jobs.entity.ProjectAttributeEnum;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
