@@ -19,18 +19,18 @@ import static java.time.Duration.ofSeconds;
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
 @Service
-public class CleanAttachmentJob extends BaseJob {
+public class CleanAttachmentCleanJob extends BaseCleanJob {
 
 	private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
 	private static final String MOVING_QUERY = "WITH moved_rows AS (DELETE FROM attachment WHERE project_id = ? AND creation_date <= ?::TIMESTAMP RETURNING *) INSERT INTO attachment_tombstone SELECT * FROM moved_rows;";
 
-	public CleanAttachmentJob(JdbcTemplate jdbcTemplate) {
+	public CleanAttachmentCleanJob(JdbcTemplate jdbcTemplate) {
 		super(jdbcTemplate);
 	}
 
-	@Scheduled(cron = "${rp.environment.variable.clean.project.cron}")
-	@SchedulerLock(name = "cleanProject", lockAtMostFor = "24h")
+	@Scheduled(cron = "${rp.environment.variable.clean.attachment.cron}")
+	@SchedulerLock(name = "cleanAttachment", lockAtMostFor = "24h")
 	public void execute() {
 		moveAttachments();
 	}
@@ -38,7 +38,7 @@ public class CleanAttachmentJob extends BaseJob {
 	private void moveAttachments() {
 		LOGGER.info("Job {} has been started.", this.getClass().getSimpleName());
 
-		Map<Long, String> projectsWithAttribute = getProjectsWithAttribute(ProjectAttributeEnum.KEEP_SCREENSHOTS);
+		Map<Long, String> projectsWithAttribute = getProjectsWithAttribute(KEEP_SCREENSHOTS);
 
 		projectsWithAttribute.forEach((projectId, keepPeriod) -> {
 			Duration ofSeconds = ofSeconds(NumberUtils.toLong(keepPeriod, 0L));
