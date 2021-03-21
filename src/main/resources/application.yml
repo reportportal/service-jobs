@@ -4,6 +4,16 @@ rp:
       clean:
         project:
           cron: '0 * * * * *'
+      storage:
+        project:
+            cron: '*/30 * * * * *'
+            pageSize: 200
+      executor:
+        pool:
+          storage:
+            project:
+              core: 5
+              max: 10
 
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
