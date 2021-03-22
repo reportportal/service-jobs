@@ -2,7 +2,7 @@ rp:
   environment:
     variable:
       clean:
-        project:
+        attachment:
           cron: '0 * * * * *'
       storage:
         project:
