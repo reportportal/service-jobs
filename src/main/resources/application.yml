@@ -1,11 +1,24 @@
-management:
-  endpoints:
-    web:
-      base-path: '/'
-  endpoint:
-    info:
-      enabled: true
+rp:
+  environment:
+    variable:
+      clean:
+        attachment:
+          cron: '0 * * * * *'
 
-server:
-  port: 8686
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driverClassName: org.postgresql.Driver
+    jdbcUrl: ${rp.db.url}
+    username: ${rp.db.user}
+    password: ${rp.db.pass}
+    maximumPoolSize: 27
+
+  db:
+    url: jdbc:postgresql://${rp.db.host}:${rp.db.port}/${rp.db.name}
+    name: reportportal
+    host: localhost
+    port: 5432
+    user: rpuser
+    pass: rppass
+
 
