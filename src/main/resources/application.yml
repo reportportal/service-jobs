@@ -4,6 +4,15 @@ rp:
       clean:
         attachment:
           cron: '0 * * * * *'
+      storage:
+        project:
+            cron: '*/30 * * * * *'
+      executor:
+        pool:
+          storage:
+            project:
+              core: 5
+              max: 10
 
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
