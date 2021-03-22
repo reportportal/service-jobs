@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * @author <a href="mailto:budaevqwerty@gmail.com">Ivan Budayeu</a>
+ * @author <a href="mailto:ivan_budayeu@epam.com">Ivan Budayeu</a>
  */
 @Service
 public class CalculateAllocatedStorageJob {

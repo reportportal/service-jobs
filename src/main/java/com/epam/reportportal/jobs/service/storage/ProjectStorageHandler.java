@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * @author <a href="mailto:budaevqwerty@gmail.com">Ivan Budayeu</a>
+ * @author <a href="mailto:ivan_budayeu@epam.com">Ivan Budayeu</a>
  */
 @Service
 public class ProjectStorageHandler implements AllocatedStorageHandler, BatchUpdater {
