@@ -7,7 +7,6 @@ rp:
       storage:
         project:
             cron: '*/30 * * * * *'
-            pageSize: 200
       executor:
         pool:
           storage:
