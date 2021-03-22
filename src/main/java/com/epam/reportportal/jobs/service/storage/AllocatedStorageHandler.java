@@ -5,5 +5,5 @@ package com.epam.reportportal.jobs.service.storage;
  */
 public interface AllocatedStorageHandler {
 
-	void updateAllocatedStorage(Long id);
+	void updateById(Long id);
 }
