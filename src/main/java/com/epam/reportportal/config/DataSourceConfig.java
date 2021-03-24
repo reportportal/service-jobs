@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.jobs.config;
+package com.epam.reportportal.config;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;

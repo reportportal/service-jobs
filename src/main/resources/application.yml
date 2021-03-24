@@ -2,8 +2,11 @@ rp:
   environment:
     variable:
       clean:
+        storage:
+          cron: '*/10 * * * * *'
+          chunkSize: 1000
         attachment:
-          cron: '0 * * * * *'
+          cron: '*/30 * * * * *'
       storage:
         project:
             cron: '*/30 * * * * *'
@@ -29,5 +32,17 @@ rp:
     port: 5432
     user: rpuser
     pass: rppass
+
+datastore:
+  path: /data/storage
+  minio:
+    endpoint: http://localhost:9000
+    accessKey: minio
+    secretKey: minio123
+    bucketPrefix: prj-
+    defaultBucketName: rp-bucket
+    region: #{null}
+  # could be one of [filesystem, minio]
+  type: minio
 
 

@@ -19,25 +19,26 @@ import static java.time.Duration.ofSeconds;
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
 @Service
-public class CleanAttachmentCleanJob extends BaseCleanJob {
+public class CleanAttachmentJob extends BaseCleanJob {
 
-	private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
+	private static final String MOVING_QUERY = "WITH moved_rows AS (DELETE FROM attachment WHERE project_id = ? " +
+			"AND creation_date <= ?::TIMESTAMP RETURNING *) " +
+			"INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date, deletion_date)  " +
+			"SELECT id, file_id, thumbnail_id, creation_date, now() FROM moved_rows;";
 
-	private static final String MOVING_QUERY = "WITH moved_rows AS (DELETE FROM attachment WHERE project_id = ? AND creation_date <= ?::TIMESTAMP RETURNING *) INSERT INTO attachment_tombstone SELECT * FROM moved_rows;";
-
-	public CleanAttachmentCleanJob(JdbcTemplate jdbcTemplate) {
+	public CleanAttachmentJob(JdbcTemplate jdbcTemplate) {
 		super(jdbcTemplate);
 	}
 
 	@Scheduled(cron = "${rp.environment.variable.clean.attachment.cron}")
 	@SchedulerLock(name = "cleanAttachment", lockAtMostFor = "24h")
 	public void execute() {
+		logStart();
 		moveAttachments();
+		logFinish();
 	}
 
 	private void moveAttachments() {
-		LOGGER.info("Job {} has been started.", this.getClass().getSimpleName());
-
 		Map<Long, String> projectsWithAttribute = getProjectsWithAttribute(KEEP_SCREENSHOTS);
 
 		projectsWithAttribute.forEach((projectId, keepPeriod) -> {
@@ -48,8 +49,5 @@ public class CleanAttachmentCleanJob extends BaseCleanJob {
 				LOGGER.info("Moved {} attachments to the tombstone table for project {}", movedCount, projectId);
 			}
 		});
-
-		LOGGER.info("Job {} has been finished. Result {}", this.getClass().getSimpleName(), "FINISHED");
 	}
-
 }

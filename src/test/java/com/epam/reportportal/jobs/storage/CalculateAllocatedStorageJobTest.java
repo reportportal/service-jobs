@@ -10,7 +10,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.List;
 
-import static com.epam.reportportal.jobs.storage.CalculateAllocatedStorageJob.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
@@ -20,6 +19,12 @@ import static org.mockito.Mockito.*;
 class CalculateAllocatedStorageJobTest {
 
 	private static final ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+	private static final String SELECT_PROJECT_IDS_QUERY = "SELECT id FROM project ORDER BY id";
+	private static final String SELECT_FILE_SIZE_SUM_BY_PROJECT_ID_QUERY =
+			"SELECT coalesce(sum(file_size), 0) FROM attachment WHERE attachment.project_id = ?";
+	private static final String UPDATE_ALLOCATED_STORAGE_BY_PROJECT_ID_QUERY =
+			"UPDATE project SET allocated_storage = ? WHERE id = ?";
+
 	private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
 
 	private final CalculateAllocatedStorageJob calculateAllocatedStorageJob = new CalculateAllocatedStorageJob(taskExecutor,
@@ -44,15 +49,15 @@ class CalculateAllocatedStorageJobTest {
 
 		final List<Long> projectIds = List.of(1L, 2L);
 
-		when(jdbcTemplate.queryForList(SELECT_PROJECT_IDS, Long.class)).thenReturn(projectIds);
-		when(jdbcTemplate.queryForObject(eq(SELECT_FILE_SIZE_SUM_BY_PROJECT_ID), eq(Long.class), anyLong())).thenReturn(1000L);
+		when(jdbcTemplate.queryForList(SELECT_PROJECT_IDS_QUERY, Long.class)).thenReturn(projectIds);
+		when(jdbcTemplate.queryForObject(eq(SELECT_FILE_SIZE_SUM_BY_PROJECT_ID_QUERY), eq(Long.class), anyLong())).thenReturn(1000L);
 
 		calculateAllocatedStorageJob.calculate();
 
-		verify(jdbcTemplate, times(2)).queryForObject(eq(SELECT_FILE_SIZE_SUM_BY_PROJECT_ID), eq(Long.class), anyLong());
+		verify(jdbcTemplate, times(2)).queryForObject(eq(SELECT_FILE_SIZE_SUM_BY_PROJECT_ID_QUERY), eq(Long.class), anyLong());
 
 		final ArgumentCaptor<Long> projectIdCaptor = ArgumentCaptor.forClass(Long.class);
-		verify(jdbcTemplate, times(2)).update(eq(UPDATE_ALLOCATED_STORAGE_BY_PROJECT_ID), anyLong(), projectIdCaptor.capture());
+		verify(jdbcTemplate, times(2)).update(eq(UPDATE_ALLOCATED_STORAGE_BY_PROJECT_ID_QUERY), anyLong(), projectIdCaptor.capture());
 		final List<Long> updatedIds = projectIdCaptor.getAllValues();
 
 		Assertions.assertEquals(projectIds.size(), updatedIds.size());
