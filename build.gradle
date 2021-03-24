@@ -45,6 +45,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'io.minio:minio:6.0.13'
 
     runtimeOnly 'org.postgresql:postgresql'
 

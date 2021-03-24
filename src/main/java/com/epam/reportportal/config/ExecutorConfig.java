@@ -1,4 +1,4 @@
-package com.epam.reportportal.jobs.config;
+package com.epam.reportportal.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -10,7 +10,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * @author <a href="mailto:ivan_budayeu@epam.com">Ivan Budayeu</a>
  */
 @Configuration
-public class ExecutorConfiguration {
+public class ExecutorConfig {
 
 	@Bean
 	public TaskExecutor projectAllocatedStorageExecutor(@Value("${rp.environment.variable.executor.pool.storage.project.core}") Integer corePoolSize,
