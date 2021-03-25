@@ -3,13 +3,22 @@ rp:
     variable:
       clean:
         storage:
-          cron: '*/10 * * * * *'
+          ## 30 seconds
+          cron: '*/30 * * * * *'
           chunkSize: 1000
         attachment:
-          cron: '*/30 * * * * *'
+          ## 2 minutes
+          cron: '0 */2 * * * *'
+        log:
+          ## 5 minutes
+          cron: '0 */5 * * * *'
+        launch:
+          ## 10 minutes
+          cron: '0 */10 * * * *'
       storage:
         project:
-            cron: '*/30 * * * * *'
+          ## 1 minute
+          cron: '0 */1 * * * *'
       executor:
         pool:
           storage:
@@ -23,7 +32,7 @@ rp:
     jdbcUrl: ${rp.db.url}
     username: ${rp.db.user}
     password: ${rp.db.pass}
-    maximumPoolSize: 27
+    maximumPoolSize: 12
 
   db:
     url: jdbc:postgresql://${rp.db.host}:${rp.db.port}/${rp.db.name}
