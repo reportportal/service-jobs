@@ -21,8 +21,8 @@ import static java.time.Duration.ofSeconds;
 public class CleanAttachmentJob extends BaseCleanJob {
 
 	private static final String MOVING_QUERY =
-			"WITH moved_rows AS (DELETE FROM attachment WHERE project_id = ? " + "AND creation_date <= ?::TIMESTAMP RETURNING *) "
-					+ "INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date, deletion_date)  "
+			"WITH moved_rows AS (DELETE FROM attachment WHERE project_id = ? AND creation_date <= ?::TIMESTAMP RETURNING *) "
+					+ "INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date, deletion_date) "
 					+ "SELECT id, file_id, thumbnail_id, creation_date, NOW() FROM moved_rows;";
 
 	public CleanAttachmentJob(JdbcTemplate jdbcTemplate) {
