@@ -1,12 +1,10 @@
 package com.epam.reportportal.jobs.clean;
 
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -39,12 +37,10 @@ public class CleanLogJob extends BaseCleanJob {
 		logStart();
 		AtomicInteger counter = new AtomicInteger(0);
 		getProjectsWithAttribute(KEEP_LOGS).forEach((projectId, keepPeriod) -> {
-			Duration ofSeconds = ofSeconds(NumberUtils.toLong(keepPeriod, 0L));
-			if (!ofSeconds.isZero()) {
-				LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(ofSeconds);
-				int deleted = jdbcTemplate.update(DELETE_LOGS_QUERY, projectId, lessThanDate);
-				LOGGER.info("Delete {} logs for project {}", deleted, projectId);
-			}
+			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(ofSeconds(keepPeriod));
+			int deleted = jdbcTemplate.update(DELETE_LOGS_QUERY, projectId, lessThanDate);
+			counter.addAndGet(deleted);
+			LOGGER.info("Delete {} logs for project {}", deleted, projectId);
 		});
 		logFinish(counter.get());
 	}
