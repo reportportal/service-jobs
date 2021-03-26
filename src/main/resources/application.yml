@@ -37,7 +37,7 @@ rp:
   db:
     url: jdbc:postgresql://${rp.db.host}:${rp.db.port}/${rp.db.name}
     name: reportportal
-    host: localhost
+    host: postgres
     port: 5432
     user: rpuser
     pass: rppass
@@ -45,7 +45,7 @@ rp:
 datastore:
   path: /data/storage
   minio:
-    endpoint: http://localhost:9000
+    endpoint: http://minio:9000
     accessKey: minio
     secretKey: minio123
     bucketPrefix: prj-
