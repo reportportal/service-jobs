@@ -3,8 +3,11 @@ package com.epam.reportportal.jobs.clean;
 import com.epam.reportportal.jobs.BaseJob;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+
+import static java.time.Duration.ofSeconds;
 
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
@@ -15,19 +18,23 @@ public class BaseCleanJob extends BaseJob {
 	protected static final String KEEP_LOGS = "job.keepLogs";
 	protected static final String KEEP_SCREENSHOTS = "job.keepScreenshots";
 
-	protected final String SELECT_PROJECTS_ATTRIBUTES = "SELECT p.id AS id, pa.value::BIGINT AS attribute_value FROM project p "
-			+ "JOIN project_attribute pa ON p.id = pa.project_id JOIN attribute a ON pa.attribute_id = a.id "
-			+ "WHERE a.name = ? AND pa.value != '0';";
+	protected final String SELECT_PROJECTS_ATTRIBUTES = "SELECT pa.project_id AS id, pa.value AS attribute_value FROM project_attribute pa "
+			+ "JOIN attribute a ON pa.attribute_id = a.id WHERE a.name = ? AND pa.value != '0' AND TRIM(pa.value) != '';";
 
 	public BaseCleanJob(JdbcTemplate jdbcTemplate) {
 		super(jdbcTemplate);
 	}
 
-	protected Map<Long, Long> getProjectsWithAttribute(String attributeKey) {
+	protected Map<Long, Duration> getProjectsWithAttribute(String attributeKey) {
 		return jdbcTemplate.query(SELECT_PROJECTS_ATTRIBUTES, rs -> {
-			Map<Long, Long> result = new HashMap<>();
+			Map<Long, Duration> result = new HashMap<>();
 			while (rs.next()) {
-				result.put(rs.getLong("id"), rs.getLong("attribute_value"));
+				String attributeValue = rs.getString("attribute_value");
+				try {
+					result.put(rs.getLong("id"), ofSeconds(Long.parseLong(attributeValue)));
+				} catch (NumberFormatException e) {
+					LOGGER.error("Bad attribute value format for {}. Expected a number, actual is {}", attributeKey, attributeValue);
+				}
 			}
 			return result;
 		}, attributeKey);

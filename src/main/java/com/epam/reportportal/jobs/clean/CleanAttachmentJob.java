@@ -9,8 +9,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static java.time.Duration.ofSeconds;
-
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
@@ -35,8 +33,8 @@ public class CleanAttachmentJob extends BaseCleanJob {
 	void moveAttachments() {
 		logStart();
 		AtomicInteger counter = new AtomicInteger(0);
-		getProjectsWithAttribute(KEEP_SCREENSHOTS).forEach((projectId, keepPeriod) -> {
-			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(ofSeconds(keepPeriod));
+		getProjectsWithAttribute(KEEP_SCREENSHOTS).forEach((projectId, duration) -> {
+			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
 			int movedCount = jdbcTemplate.update(MOVING_QUERY, projectId, lessThanDate);
 			counter.addAndGet(movedCount);
 			LOGGER.info("Moved {} attachments to the deletion table for project {}", movedCount, projectId);

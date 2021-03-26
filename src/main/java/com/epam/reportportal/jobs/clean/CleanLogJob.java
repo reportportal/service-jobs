@@ -9,8 +9,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static java.time.Duration.ofSeconds;
-
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
@@ -36,8 +34,8 @@ public class CleanLogJob extends BaseCleanJob {
 	void removeLogs() {
 		logStart();
 		AtomicInteger counter = new AtomicInteger(0);
-		getProjectsWithAttribute(KEEP_LOGS).forEach((projectId, keepPeriod) -> {
-			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(ofSeconds(keepPeriod));
+		getProjectsWithAttribute(KEEP_LOGS).forEach((projectId, duration) -> {
+			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
 			int deleted = jdbcTemplate.update(DELETE_LOGS_QUERY, projectId, lessThanDate);
 			counter.addAndGet(deleted);
 			LOGGER.info("Delete {} logs for project {}", deleted, projectId);
