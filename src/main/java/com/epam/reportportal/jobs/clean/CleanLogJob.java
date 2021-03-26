@@ -37,8 +37,10 @@ public class CleanLogJob extends BaseCleanJob {
 		getProjectsWithAttribute(KEEP_LOGS).forEach((projectId, duration) -> {
 			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
 			int deleted = jdbcTemplate.update(DELETE_LOGS_QUERY, projectId, lessThanDate);
-			counter.addAndGet(deleted);
-			LOGGER.info("Delete {} logs for project {}", deleted, projectId);
+			if (deleted != 0) {
+				counter.addAndGet(deleted);
+				LOGGER.info("Delete {} logs for project {}", deleted, projectId);
+			}
 		});
 		logFinish(counter.get());
 	}

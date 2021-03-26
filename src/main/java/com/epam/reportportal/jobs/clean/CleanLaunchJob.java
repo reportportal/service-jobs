@@ -37,8 +37,10 @@ public class CleanLaunchJob extends BaseCleanJob {
 		getProjectsWithAttribute(KEEP_LAUNCHES).forEach((projectId, duration) -> {
 			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
 			int deleted = jdbcTemplate.update(DELETE_LAUNCH_QUERY, projectId, lessThanDate);
-			counter.addAndGet(deleted);
-			LOGGER.info("Delete {} launches for project {}", deleted, projectId);
+			if (deleted != 0) {
+				counter.addAndGet(deleted);
+				LOGGER.info("Delete {} launches for project {}", deleted, projectId);
+			}
 		});
 		logFinish(counter.get());
 	}
