@@ -1,11 +1,57 @@
-management:
-  endpoints:
-    web:
-      base-path: '/'
-  endpoint:
-    info:
-      enabled: true
+rp:
+  environment:
+    variable:
+      clean:
+        storage:
+          ## 30 seconds
+          cron: '*/30 * * * * *'
+          chunkSize: 1000
+        attachment:
+          ## 2 minutes
+          cron: '0 */2 * * * *'
+        log:
+          ## 5 minutes
+          cron: '0 */5 * * * *'
+        launch:
+          ## 10 minutes
+          cron: '0 */10 * * * *'
+      storage:
+        project:
+          ## 1 minute
+          cron: '0 */1 * * * *'
+      executor:
+        pool:
+          storage:
+            project:
+              core: 5
+              max: 10
 
-server:
-  port: 8686
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driverClassName: org.postgresql.Driver
+    jdbcUrl: ${rp.db.url}
+    username: ${rp.db.user}
+    password: ${rp.db.pass}
+    maximumPoolSize: 12
+
+  db:
+    url: jdbc:postgresql://${rp.db.host}:${rp.db.port}/${rp.db.name}
+    name: reportportal
+    host: postgres
+    port: 5432
+    user: rpuser
+    pass: rppass
+
+datastore:
+  path: /data/storage
+  minio:
+    endpoint: http://minio:9000
+    accessKey: minio
+    secretKey: minio123
+    bucketPrefix: prj-
+    defaultBucketName: rp-bucket
+    region: #{null}
+  # could be one of [filesystem, minio]
+  type: minio
+
 
