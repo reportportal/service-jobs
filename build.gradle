@@ -79,5 +79,3 @@ publishing {
 
 addDockerfileToGit.dependsOn createDockerfile
 beforeReleaseBuild.dependsOn addDockerfileToGit
-bintrayUpload.mustRunAfter build
-afterReleaseBuild.dependsOn bintrayUpload
