@@ -5,6 +5,7 @@ plugins {
 }
 
 project.ext {
+    publishRepo = "https://maven.pkg.github.com/reportportal/service-jobs"
     releaseMode = project.hasProperty("releaseMode")
 }
 
@@ -14,6 +15,7 @@ apply from: "$scriptsUrl/build-docker.gradle"
 apply from: "$scriptsUrl/build-commons.gradle"
 apply from: "$scriptsUrl/build-info.gradle"
 apply from: "$scriptsUrl/release-service.gradle"
+apply from: "$scriptsUrl/signing.gradle"
 
 sourceCompatibility = '11'
 
@@ -23,8 +25,21 @@ bootJar {
 jar.enabled(true)
 
 repositories {
-    mavenCentral()
-    releaseMode ? maven { url "http://dl.bintray.com/epam/reportportal" } : maven { url 'https://jitpack.io' }
+    mavenCentral { url "https://repo1.maven.org/maven2" }
+    maven { url 'https://repo.spring.io/libs-milestone' }
+    if (releaseMode) {
+        dependencyRepos.forEach { path ->
+            maven {
+                setUrl("https://maven.pkg.github.com/reportportal/${path}")
+                credentials {
+                    username = findProperty("githubUserName")
+                    password = findProperty("githubToken")
+                }
+            }
+        }
+    } else {
+        maven { url 'https://jitpack.io' }
+    }
 }
 
 processResources {
@@ -61,21 +76,7 @@ test {
     useJUnitPlatform()
 }
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            versionMapping {
-                usage('java-api') {
-                    fromResolutionOf('runtimeClasspath')
-                }
-                usage('java-runtime') {
-                    fromResolutionResult()
-                }
-            }
-        }
-    }
-}
-
-
 addDockerfileToGit.dependsOn createDockerfile
 beforeReleaseBuild.dependsOn addDockerfileToGit
+publish.dependsOn build
+publish.mustRunAfter build
