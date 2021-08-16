@@ -15,6 +15,9 @@ import java.util.stream.Collectors;
 
 import static com.epam.reportportal.analyzer.RabbitMqManagementClientTemplate.EXCHANGE_PRIORITY;
 
+/**
+ * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
+ */
 @Service
 public class IndexerServiceClientImpl implements IndexerServiceClient {
 

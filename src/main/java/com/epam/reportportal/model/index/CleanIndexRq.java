@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
+/**
+ * @author <a href="mailto:ihar_kahadouski@epam.com">Ihar Kahadouski</a>
+ */
 public class CleanIndexRq {
 
 	@JsonProperty("project")
