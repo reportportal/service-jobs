@@ -10,6 +10,7 @@ rp:
           ## 2 minutes
           cron: '0 */2 * * * *'
         log:
+          batch: 3000
           ## 5 minutes
           cron: '0 */5 * * * *'
         launch:
@@ -41,6 +42,18 @@ rp:
     port: 5432
     user: rpuser
     pass: rppass
+
+  amqp:
+    addresses: amqp://${rp.amqp.user}:${rp.amqp.pass}@${rp.amqp.host}:${rp.amqp.port}
+    api-address: http://${rp.amqp.apiuser}:${rp.amqp.apipass}@${rp.amqp.host}:${rp.amqp.apiport}/api
+    host: rabbitmq
+    port: 5672
+    user: rabbitmq
+    pass: rabbitmq
+    apiport: 15672
+    apiuser: rabbitmq
+    apipass: rabbitmq
+    reply-timeout: 300000 #milliseconds
 
 datastore:
   path: /data/storage
