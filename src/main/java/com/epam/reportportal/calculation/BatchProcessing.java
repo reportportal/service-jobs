@@ -13,11 +13,11 @@ import java.util.concurrent.ScheduledFuture;
  */
 public abstract class BatchProcessing<T> {
 
-	private List<T> objectList;
+	private final List<T> objectList;
 	private final TaskScheduler scheduler;
 	private volatile ScheduledFuture<?> scheduledTask;
-	private int batchSize;
-	private long timeout;
+	private final int batchSize;
+	private final long timeout;
 
 	public BatchProcessing(int batchSize, long timeout, TaskScheduler scheduler) {
 		if (timeout < 0 || scheduler == null) {

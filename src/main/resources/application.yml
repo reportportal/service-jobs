@@ -1,6 +1,12 @@
 rp:
   environment:
     variable:
+#      calculation:
+#        retry:
+#          queue: 'retry_queue'
+#          batchSize: 5
+#          #milliseconds
+#          batchTimeout: 1000
       clean:
         storage:
           ## 30 seconds
