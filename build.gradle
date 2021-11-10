@@ -47,7 +47,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-amqp'
     implementation 'io.minio:minio:6.0.13'
+
+    compile "com.rabbitmq:http-client:2.1.0.RELEASE"
 
     runtimeOnly 'org.postgresql:postgresql'
 
