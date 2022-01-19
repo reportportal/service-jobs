@@ -16,6 +16,12 @@ rp:
         launch:
           ## 10 minutes
           cron: '0 */10 * * * *'
+        view:
+          ## 24 hours
+          cron: '0 0 */24 * * *'
+          ## 2 hours
+          liveTimeout: 7200
+          batch: 100
       storage:
         project:
           ## 1 minute
@@ -38,7 +44,7 @@ rp:
   db:
     url: jdbc:postgresql://${rp.db.host}:${rp.db.port}/${rp.db.name}
     name: reportportal
-    host: postgres
+    host: localhost
     port: 5432
     user: rpuser
     pass: rppass
@@ -46,7 +52,7 @@ rp:
   amqp:
     addresses: amqp://${rp.amqp.user}:${rp.amqp.pass}@${rp.amqp.host}:${rp.amqp.port}
     api-address: http://${rp.amqp.apiuser}:${rp.amqp.apipass}@${rp.amqp.host}:${rp.amqp.apiport}/api
-    host: rabbitmq
+    host: localhost
     port: 5672
     user: rabbitmq
     pass: rabbitmq
@@ -65,6 +71,6 @@ datastore:
     defaultBucketName: rp-bucket
     region: #{null}
   # could be one of [filesystem, minio]
-  type: minio
+  type: filesystem
 
 
