@@ -16,6 +16,7 @@
 
 package com.epam.reportportal.analyzer.index;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -31,5 +32,17 @@ public interface IndexerServiceClient {
 	 * @return Amount of deleted logs
 	 */
 	Long cleanIndex(Long index, List<Long> ids);
+
+	/**
+	 * Remove documents from index by index and log time range.
+	 * @param index Index to be cleaned.
+	 */
+	void removeFromIndexLessThanLogDate(Long index, LocalDateTime lessThanDate);
+
+	/**
+	 * Remove documents from index by index and log time range.
+	 * @param index Index to be cleaned
+	 */
+	void removeFromIndexLessThanLaunchDate(Long index, LocalDateTime lessThanDate);
 
 }

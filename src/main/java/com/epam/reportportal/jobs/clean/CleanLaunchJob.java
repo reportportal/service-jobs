@@ -1,5 +1,6 @@
 package com.epam.reportportal.jobs.clean;
 
+import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -29,11 +30,14 @@ public class CleanLaunchJob extends BaseCleanJob {
 
 	private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 	private final CleanLogJob cleanLogJob;
+	private final IndexerServiceClient indexerServiceClient;
 
-	public CleanLaunchJob(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate, CleanLogJob cleanLogJob) {
+	public CleanLaunchJob(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+						  CleanLogJob cleanLogJob, IndexerServiceClient indexerServiceClient) {
 		super(jdbcTemplate);
 		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
 		this.cleanLogJob = cleanLogJob;
+		this.indexerServiceClient = indexerServiceClient;
 	}
 
 	@Scheduled(cron = "${rp.environment.variable.clean.launch.cron}")
@@ -47,19 +51,24 @@ public class CleanLaunchJob extends BaseCleanJob {
 		logStart();
 		AtomicInteger counter = new AtomicInteger(0);
 		getProjectsWithAttribute(KEEP_LAUNCHES).forEach((projectId, duration) -> {
-			final List<Long> launchIds = getLaunchIds(projectId, duration);
+			final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
+			final List<Long> launchIds = getLaunchIds(projectId, lessThanDate);
 			if (!launchIds.isEmpty()) {
 				deleteClusters(launchIds);
 				int deleted = namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY, Map.of(IDS_PARAM, launchIds));
 				counter.addAndGet(deleted);
 				LOGGER.info("Delete {} launches for project {}", deleted, projectId);
+				// to avoid error message in analyzer log, doesn't find index
+				if (deleted > 0) {
+					indexerServiceClient.removeFromIndexLessThanLaunchDate(projectId, lessThanDate);
+					LOGGER.info("Send message for deletion to analyzer for project {}", projectId);
+				}
 			}
 		});
 		logFinish(counter.get());
 	}
 
-	private List<Long> getLaunchIds(Long projectId, Duration duration) {
-		final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
+	private List<Long> getLaunchIds(Long projectId, LocalDateTime lessThanDate) {
 		return namedParameterJdbcTemplate.queryForList(SELECT_LAUNCH_ID_QUERY,
 				Map.of(PROJECT_ID_PARAM, projectId, START_TIME_PARAM, lessThanDate),
 				Long.class

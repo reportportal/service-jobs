@@ -10,7 +10,6 @@ rp:
           ## 2 minutes
           cron: '0 */2 * * * *'
         log:
-          batch: 3000
           ## 5 minutes
           cron: '0 */5 * * * *'
         launch:
