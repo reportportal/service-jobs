@@ -26,7 +26,7 @@ public class IndexerServiceClientImpl implements IndexerServiceClient {
 	private static final String CLEAN_ROUTE = "clean";
 	private static final String CLEAN_BY_LOG_DATE_ROUTE = "remove_by_log_time";
 	private static final String CLEAN_BY_LAUNCH_DATE_ROUTE = "remove_by_launch_start_time";
-	private static final String EXCHANGE_NAME = "analyzer";
+	private static final String EXCHANGE_NAME = "analyzer-default";
 	// need to be in line with analyzer API, better to fix api and remove it in future.
 	private static final LocalDateTime OLDEST_DATE = LocalDateTime.now().minusYears(10L);
 
