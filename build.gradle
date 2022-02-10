@@ -14,10 +14,15 @@ def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/
 apply from: "$scriptsUrl/build-docker.gradle"
 apply from: "$scriptsUrl/build-commons.gradle"
 apply from: "$scriptsUrl/build-info.gradle"
+apply from: "$scriptsUrl/build-quality.gradle"
 apply from: "$scriptsUrl/release-service.gradle"
 apply from: "$scriptsUrl/signing.gradle"
 
 sourceCompatibility = '11'
+
+wrapper {
+    gradleVersion = '6.3'
+}
 
 bootJar {
     project.hasProperty('gcp') ? getArchiveFileName().set('app.jar') : archiveClassifier.set('exec')
