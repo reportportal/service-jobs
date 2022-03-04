@@ -49,7 +49,7 @@ public class ProcessingRabbitMqConfiguration {
 			@Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter) {
 		SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
 		factory.setConnectionFactory(connectionFactory);
-		factory.setMaxConcurrentConsumers(5);
+		factory.setMaxConcurrentConsumers(20);
 		factory.setMessageConverter(jsonMessageConverter);
 		return factory;
 	}

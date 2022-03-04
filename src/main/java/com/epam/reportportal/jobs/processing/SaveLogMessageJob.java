@@ -17,7 +17,7 @@ public class SaveLogMessageJob {
     private final SaveLogMessageProcessing saveLogMessageProcessing;
 
     public SaveLogMessageJob(LogMessageRepository logMessageRepository) {
-        saveLogMessageProcessing = new SaveLogMessageProcessing(logMessageRepository,5, 3000,
+        saveLogMessageProcessing = new SaveLogMessageProcessing(logMessageRepository,100, 3000,
                 new DefaultManagedTaskScheduler());
     }
 
