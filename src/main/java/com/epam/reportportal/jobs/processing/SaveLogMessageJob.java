@@ -14,17 +14,20 @@ import java.util.Objects;
 public class SaveLogMessageJob {
     public static final String LOG_MESSAGE_SAVING_QUEUE_NAME = "log_message_saving";
 
-    private final SaveLogMessageProcessing saveLogMessageProcessing;
+//    private final SaveLogMessageProcessing saveLogMessageProcessing;
+    private final LogMessageRepository logMessageRepository;
 
     public SaveLogMessageJob(LogMessageRepository logMessageRepository) {
-        saveLogMessageProcessing = new SaveLogMessageProcessing(logMessageRepository,100, 3000,
-                new DefaultManagedTaskScheduler());
+        this.logMessageRepository = logMessageRepository;
+//        saveLogMessageProcessing = new SaveLogMessageProcessing(logMessageRepository,100, 3000,
+//                new DefaultManagedTaskScheduler());
     }
 
     @RabbitListener(queues = LOG_MESSAGE_SAVING_QUEUE_NAME, containerFactory = "processingRabbitListenerContainerFactory")
     public void execute(@Payload LogMessage logMessage) {
         if (Objects.nonNull(logMessage)) {
-            saveLogMessageProcessing.add(logMessage);
+            logMessageRepository.save(logMessage);
+//            saveLogMessageProcessing.add(logMessage);
         }
     }
 }
