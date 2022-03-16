@@ -57,7 +57,6 @@ public class CleanLaunchJob extends BaseCleanJob {
 				int deleted = namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY, Map.of(IDS_PARAM, launchIds));
 				counter.addAndGet(deleted);
 				LOGGER.info("Delete {} launches for project {}", deleted, projectId);
-				LOGGER.info("Attempt to send to analyzer {}", projectId);
 				// to avoid error message in analyzer log, doesn't find index
 				if (deleted > 0) {
 					indexerServiceClient.removeFromIndexLessThanLaunchDate(projectId, lessThanDate);
