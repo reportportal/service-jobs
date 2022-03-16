@@ -7,7 +7,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -58,6 +57,7 @@ public class CleanLaunchJob extends BaseCleanJob {
 				int deleted = namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY, Map.of(IDS_PARAM, launchIds));
 				counter.addAndGet(deleted);
 				LOGGER.info("Delete {} launches for project {}", deleted, projectId);
+				LOGGER.info("Attempt to send to analyzer {}", projectId);
 				// to avoid error message in analyzer log, doesn't find index
 				if (deleted > 0) {
 					indexerServiceClient.removeFromIndexLessThanLaunchDate(projectId, lessThanDate);
