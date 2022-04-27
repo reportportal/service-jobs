@@ -42,6 +42,7 @@ processResources {
 }
 
 dependencies {
+    implementation group: 'org.json', name: 'json', version: '20220320'
     implementation('org.springframework.boot:spring-boot-starter-data-elasticsearch:2.6.3')
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa:2.6.3'
 

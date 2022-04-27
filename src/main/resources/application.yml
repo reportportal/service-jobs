@@ -31,9 +31,8 @@ rp:
             project:
               core: 5
               max: 10
-  elasticsearchLogmessage:
-    host: elasticsearch
-    port: 9200
+  elasticsearch:
+    host: http://elasticsearch:9200
     username:
     password:
 
