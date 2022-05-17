@@ -37,8 +37,6 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
-import static com.epam.reportportal.analyzer.RabbitMqManagementClientTemplate.ANALYZER_KEY;
-
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
@@ -59,16 +57,18 @@ public class AnalyzerRabbitMqConfiguration {
 	}
 
 	@Bean
-	public RabbitMqManagementClient managementTemplate(@Value("${rp.amqp.api-address}") String address)
+	public RabbitMqManagementClient managementTemplate(@Value("${rp.amqp.api-address}") String address,
+			@Value("${rp.amqp.analyzer-vhost}") String virtualHost)
 			throws MalformedURLException, URISyntaxException, JsonProcessingException {
 		final Client rabbitClient = new Client(address);
-		return new RabbitMqManagementClientTemplate(rabbitClient);
+		return new RabbitMqManagementClientTemplate(rabbitClient, virtualHost);
 	}
 
 	@Bean(name = "analyzerConnectionFactory")
-	public ConnectionFactory analyzerConnectionFactory(@Value("${rp.amqp.addresses}") URI addresses) {
+	public ConnectionFactory analyzerConnectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
+			@Value("${rp.amqp.analyzer-vhost}") String virtualHost) {
 		CachingConnectionFactory factory = new CachingConnectionFactory(addresses);
-		factory.setVirtualHost(ANALYZER_KEY);
+		factory.setVirtualHost(virtualHost);
 		return factory;
 	}
 
