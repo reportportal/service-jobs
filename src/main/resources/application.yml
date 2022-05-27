@@ -63,6 +63,7 @@ rp:
     apiuser: rabbitmq
     apipass: rabbitmq
     reply-timeout: 300000 #milliseconds
+    maxLogConsumer: 50
 
 datastore:
   path: /data/storage

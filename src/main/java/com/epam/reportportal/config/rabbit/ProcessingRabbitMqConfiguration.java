@@ -46,10 +46,11 @@ public class ProcessingRabbitMqConfiguration {
 
 	@Bean
 	public SimpleRabbitListenerContainerFactory processingRabbitListenerContainerFactory(
-			@Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter) {
+			@Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter,
+			@Value("${rp.amqp.maxLogConsumer}") int maxLogConsumer) {
 		SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
 		factory.setConnectionFactory(connectionFactory);
-		factory.setMaxConcurrentConsumers(20);
+		factory.setMaxConcurrentConsumers(maxLogConsumer);
 		factory.setMessageConverter(jsonMessageConverter);
 		return factory;
 	}
