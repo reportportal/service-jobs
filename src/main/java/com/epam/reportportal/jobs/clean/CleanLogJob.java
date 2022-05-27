@@ -1,7 +1,9 @@
 package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
+import com.epam.reportportal.extension.event.ElementsDeletedPluginEvent;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -20,12 +22,14 @@ public class CleanLogJob extends BaseCleanJob {
 
 	private final CleanAttachmentJob cleanAttachmentJob;
 	private final IndexerServiceClient indexerServiceClient;
+	private final ApplicationEventPublisher eventPublisher;
 
 	public CleanLogJob(JdbcTemplate jdbcTemplate, CleanAttachmentJob cleanAttachmentJob,
-					   IndexerServiceClient indexerServiceClient) {
+					   IndexerServiceClient indexerServiceClient, ApplicationEventPublisher eventPublisher) {
 		super(jdbcTemplate);
 		this.cleanAttachmentJob = cleanAttachmentJob;
 		this.indexerServiceClient = indexerServiceClient;
+		this.eventPublisher = eventPublisher;
 	}
 
 	@Scheduled(cron = "${rp.environment.variable.clean.log.cron}")
@@ -45,6 +49,7 @@ public class CleanLogJob extends BaseCleanJob {
 			LOGGER.info("Delete {} logs for project {}", deleted, projectId);
 			// to avoid error message in analyzer log, doesn't find index
 			if (deleted > 0) {
+				eventPublisher.publishEvent(new ElementsDeletedPluginEvent(this, projectId, deleted));
 				indexerServiceClient.removeFromIndexLessThanLogDate(projectId, lessThanDate);
 				LOGGER.info("Send message for deletion to analyzer for project {}", projectId);
 			}
