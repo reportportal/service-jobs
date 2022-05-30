@@ -42,15 +42,9 @@ processResources {
     }
 }
 
-dependencyManagement {
-    imports {
-        mavenBom(releaseMode ? 'com.epam.reportportal:commons-bom:' + getProperty('bom.version') : 'com.github.reportportal:commons-bom:7ea4bf3')
-    }
-}
-
 dependencies {
     if (releaseMode) {
-        compile 'com.epam.reportportal:plugin-api'
+        compile 'com.epam.reportportal:plugin-api:5.8.0'
     } else {
         compile 'com.github.reportportal:plugin-api:0abfb14'
     }
