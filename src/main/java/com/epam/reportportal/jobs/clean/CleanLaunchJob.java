@@ -1,13 +1,14 @@
 package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
+import com.epam.reportportal.extension.event.ElementsDeletedPluginEvent;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -31,13 +32,15 @@ public class CleanLaunchJob extends BaseCleanJob {
 	private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 	private final CleanLogJob cleanLogJob;
 	private final IndexerServiceClient indexerServiceClient;
+	private final ApplicationEventPublisher eventPublisher;
 
-	public CleanLaunchJob(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-						  CleanLogJob cleanLogJob, IndexerServiceClient indexerServiceClient) {
+	public CleanLaunchJob(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate, CleanLogJob cleanLogJob,
+			IndexerServiceClient indexerServiceClient, ApplicationEventPublisher eventPublisher) {
 		super(jdbcTemplate);
 		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
 		this.cleanLogJob = cleanLogJob;
 		this.indexerServiceClient = indexerServiceClient;
+		this.eventPublisher = eventPublisher;
 	}
 
 	@Scheduled(cron = "${rp.environment.variable.clean.launch.cron}")
@@ -55,6 +58,7 @@ public class CleanLaunchJob extends BaseCleanJob {
 			final List<Long> launchIds = getLaunchIds(projectId, lessThanDate);
 			if (!launchIds.isEmpty()) {
 				deleteClusters(launchIds);
+				final Long numberOfLaunchElements = countNumberOfLaunchElements(launchIds);
 				int deleted = namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY, Map.of(IDS_PARAM, launchIds));
 				counter.addAndGet(deleted);
 				LOGGER.info("Delete {} launches for project {}", deleted, projectId);
@@ -62,6 +66,7 @@ public class CleanLaunchJob extends BaseCleanJob {
 				if (deleted > 0) {
 					indexerServiceClient.removeFromIndexLessThanLaunchDate(projectId, lessThanDate);
 					LOGGER.info("Send message for deletion to analyzer for project {}", projectId);
+					eventPublisher.publishEvent(new ElementsDeletedPluginEvent(launchIds, projectId, numberOfLaunchElements));
 				}
 			}
 		});
@@ -77,5 +82,23 @@ public class CleanLaunchJob extends BaseCleanJob {
 
 	private void deleteClusters(List<Long> launchIds) {
 		namedParameterJdbcTemplate.update(DELETE_CLUSTER_QUERY, Map.of(IDS_PARAM, launchIds));
+	}
+
+	private Long countNumberOfLaunchElements(List<Long> launchIds) {
+		Long resultedNumber = (long) launchIds.size();
+		final List<Long> itemIds = namedParameterJdbcTemplate.queryForList("SELECT test_item.item_id FROM test_item WHERE launch_id IN (:ids);",
+				Map.of(IDS_PARAM, launchIds),
+				Long.class
+		);
+		resultedNumber += itemIds.size();
+		resultedNumber += namedParameterJdbcTemplate.queryForObject("SELECT COUNT(*) FROM log WHERE item_id IN (:ids);",
+				Map.of(IDS_PARAM, itemIds),
+				Long.class
+		);
+		resultedNumber += namedParameterJdbcTemplate.queryForObject("SELECT COUNT(*) FROM log WHERE log.launch_id IN (:ids);",
+				Map.of(IDS_PARAM, launchIds),
+				Long.class
+		);
+		return resultedNumber;
 	}
 }

@@ -52,7 +52,7 @@ dependencies {
     if (releaseMode) {
         compile 'com.epam.reportportal:plugin-api'
     } else {
-        compile 'com.github.reportportal:plugin-api:3ad7f96'
+        compile 'com.github.reportportal:plugin-api:0abfb14'
     }
 
     implementation('org.springframework.boot:spring-boot-starter-data-elasticsearch:2.6.3')
