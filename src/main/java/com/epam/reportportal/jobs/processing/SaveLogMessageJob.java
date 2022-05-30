@@ -21,7 +21,7 @@ public class SaveLogMessageJob {
     @RabbitListener(queues = LOG_MESSAGE_SAVING_QUEUE_NAME, containerFactory = "processingRabbitListenerContainerFactory")
     public void execute(@Payload LogMessage logMessage) {
         if (Objects.nonNull(logMessage)) {
-            simpleElasticSearchClient.save(logMessage);
+//            simpleElasticSearchClient.save(logMessage);
         }
     }
 }
