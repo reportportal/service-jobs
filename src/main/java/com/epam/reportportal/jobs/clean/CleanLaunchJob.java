@@ -1,7 +1,7 @@
 package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
-import com.epam.reportportal.extension.event.ElementsDeletedPluginEvent;
+import com.epam.reportportal.events.ElementsDeletedEvent;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -66,7 +66,7 @@ public class CleanLaunchJob extends BaseCleanJob {
 				if (deleted > 0) {
 					indexerServiceClient.removeFromIndexLessThanLaunchDate(projectId, lessThanDate);
 					LOGGER.info("Send message for deletion to analyzer for project {}", projectId);
-					eventPublisher.publishEvent(new ElementsDeletedPluginEvent(launchIds, projectId, numberOfLaunchElements));
+					eventPublisher.publishEvent(new ElementsDeletedEvent(launchIds, projectId, numberOfLaunchElements));
 				}
 			}
 		});

@@ -44,9 +44,9 @@ processResources {
 
 dependencies {
     if (releaseMode) {
-        compile 'com.epam.reportportal:plugin-api:5.8.0'
+        implementation 'com.github.reportportal:commons-events:f130879'
     } else {
-        compile 'com.github.reportportal:plugin-api:0abfb14'
+        implementation 'com.github.reportportal:commons-events:f130879'
     }
 
     implementation('org.springframework.boot:spring-boot-starter-data-elasticsearch:2.6.3')
