@@ -43,6 +43,7 @@ node {
         docker.withServer("$DOCKER_HOST") {
             withEnv(["AWS_URI=${AWS_URI}"]) {
                 sh 'docker rmi ${AWS_URI}/service-jobs:SNAPSHOT-${BUILD_NUMBER}'
+                sh 'docker rmi ${AWS_URI}/service-jobs:latest'
             }
         }
     }
