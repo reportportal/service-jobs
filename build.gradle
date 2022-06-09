@@ -32,6 +32,7 @@ jar.enabled(true)
 repositories {
     mavenCentral { url "https://repo1.maven.org/maven2" }
     maven { url 'https://repo.spring.io/libs-milestone' }
+    maven { url 'https://jitpack.io' }
 }
 
 processResources {
@@ -42,6 +43,12 @@ processResources {
 }
 
 dependencies {
+    if (releaseMode) {
+        implementation 'com.github.reportportal:commons-events:f130879'
+    } else {
+        implementation 'com.github.reportportal:commons-events:f130879'
+    }
+
     implementation('org.springframework.boot:spring-boot-starter-data-elasticsearch:2.6.3')
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa:2.6.3'
 
