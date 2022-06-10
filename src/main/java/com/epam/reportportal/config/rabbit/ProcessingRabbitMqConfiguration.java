@@ -38,9 +38,10 @@ import java.net.URI;
 public class ProcessingRabbitMqConfiguration {
 
 	@Bean(name = "processingConnectionFactory")
-	public ConnectionFactory processingConnectionFactory(@Value("${rp.amqp.addresses}") URI addresses) {
+	public ConnectionFactory processingConnectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
+			@Value("${rp.amqp.base-vhost}") String virtualHost) {
 		CachingConnectionFactory factory = new CachingConnectionFactory(addresses);
-		factory.setVirtualHost("/");
+		factory.setVirtualHost(virtualHost);
 		return factory;
 	}
 
