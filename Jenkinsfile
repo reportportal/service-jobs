@@ -1,5 +1,4 @@
 #!groovy
-
 node {
 
     load "$JENKINS_HOME/jobvars.env"
@@ -10,18 +9,23 @@ node {
     stage('Checkout') {
         checkout scm
     }
+    
     stage('Assemble') {
         sh "./gradlew clean assemble -P buildNumber=${env.BUILD_NUMBER}"
     }
+
     stage('Test') {
         sh './gradlew test --full-stacktrace'
     }
+
     stage('Build') {
         sh './gradlew build'
     }
+
     stage('Docker image') {
         sh "./gradlew buildDocker -P dockerServerUrl=$DOCKER_HOST"
     }
+
     stage('Deploy Container') {
         docker.withServer("$DOCKER_HOST") {
             sh "docker-compose -p reportportal -f $COMPOSE_FILE_RP up -d --force-recreate jobs"
@@ -39,6 +43,7 @@ node {
             }
         }
     }
+
     stage('Cleanup') {
         docker.withServer("$DOCKER_HOST") {
             withEnv(["AWS_URI=${AWS_URI}"]) {
