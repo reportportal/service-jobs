@@ -2,9 +2,7 @@ package com.epam.reportportal.log;
 
 import com.epam.reportportal.calculation.BatchProcessing;
 import com.epam.reportportal.elastic.SimpleElasticSearchClient;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.DefaultManagedTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
