@@ -49,6 +49,7 @@ public class CleanLogJob extends BaseCleanJob {
 			LOGGER.info("Delete {} logs for project {}", deleted, projectId);
 			// to avoid error message in analyzer log, doesn't find index
 			if (deleted > 0) {
+				LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
 				eventPublisher.publishEvent(new ElementsDeletedEvent(this, projectId, deleted));
 				indexerServiceClient.removeFromIndexLessThanLogDate(projectId, lessThanDate);
 				LOGGER.info("Send message for deletion to analyzer for project {}", projectId);
