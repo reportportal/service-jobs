@@ -2,7 +2,9 @@ package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import com.epam.reportportal.events.ElementsDeletedEvent;
+import com.google.common.collect.Lists;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -13,7 +15,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
@@ -24,6 +28,7 @@ public class CleanLaunchJob extends BaseCleanJob {
 	private static final String IDS_PARAM = "ids";
 	private static final String PROJECT_ID_PARAM = "projectId";
 	private static final String START_TIME_PARAM = "startTime";
+	private final Integer batchSize;
 
 	private static final String SELECT_LAUNCH_ID_QUERY = "SELECT id FROM launch WHERE project_id = :projectId AND start_time <= :startTime::TIMESTAMP;";
 	private static final String DELETE_CLUSTER_QUERY = "DELETE FROM clusters WHERE clusters.launch_id IN (:ids);";
@@ -34,9 +39,11 @@ public class CleanLaunchJob extends BaseCleanJob {
 	private final IndexerServiceClient indexerServiceClient;
 	private final ApplicationEventPublisher eventPublisher;
 
-	public CleanLaunchJob(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate, CleanLogJob cleanLogJob,
-			IndexerServiceClient indexerServiceClient, ApplicationEventPublisher eventPublisher) {
+	public CleanLaunchJob(@Value("${rp.environment.variable.elements-counter.batch-size}") Integer batchSize, JdbcTemplate jdbcTemplate,
+			NamedParameterJdbcTemplate namedParameterJdbcTemplate, CleanLogJob cleanLogJob, IndexerServiceClient indexerServiceClient,
+			ApplicationEventPublisher eventPublisher) {
 		super(jdbcTemplate);
+		this.batchSize = batchSize;
 		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
 		this.cleanLogJob = cleanLogJob;
 		this.indexerServiceClient = indexerServiceClient;
@@ -85,22 +92,24 @@ public class CleanLaunchJob extends BaseCleanJob {
 	}
 
 	private Long countNumberOfLaunchElements(List<Long> launchIds) {
-		Long resultedNumber = (long) launchIds.size();
+		final AtomicLong resultedNumber = new AtomicLong(launchIds.size());
 		final List<Long> itemIds = namedParameterJdbcTemplate.queryForList("SELECT item_id FROM test_item WHERE launch_id IN (:ids) UNION "
 						+ "SELECT item_id FROM test_item WHERE retry_of IS NOT NULL AND retry_of IN "
 						+ "(SELECT item_id FROM test_item WHERE launch_id IN (:ids))",
 				Map.of(IDS_PARAM, launchIds),
 				Long.class
 		);
-		resultedNumber += itemIds.size();
-		resultedNumber += namedParameterJdbcTemplate.queryForObject("SELECT COUNT(*) FROM log WHERE item_id IN (:ids);",
-				Map.of(IDS_PARAM, itemIds),
-				Long.class
-		);
-		resultedNumber += namedParameterJdbcTemplate.queryForObject("SELECT COUNT(*) FROM log WHERE log.launch_id IN (:ids);",
+		resultedNumber.addAndGet(itemIds.size());
+		Lists.partition(itemIds, batchSize)
+				.forEach(batch -> resultedNumber.addAndGet(Optional.ofNullable(namedParameterJdbcTemplate.queryForObject(
+						"SELECT COUNT(*) FROM log WHERE item_id IN (:ids);",
+						Map.of(IDS_PARAM, itemIds),
+						Long.class
+				)).orElse(0L)));
+		resultedNumber.addAndGet(Optional.ofNullable(namedParameterJdbcTemplate.queryForObject("SELECT COUNT(*) FROM log WHERE log.launch_id IN (:ids);",
 				Map.of(IDS_PARAM, launchIds),
 				Long.class
-		);
-		return resultedNumber;
+		)).orElse(0L));
+		return resultedNumber.longValue();
 	}
 }
