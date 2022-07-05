@@ -86,7 +86,9 @@ public class CleanLaunchJob extends BaseCleanJob {
 
 	private Long countNumberOfLaunchElements(List<Long> launchIds) {
 		Long resultedNumber = (long) launchIds.size();
-		final List<Long> itemIds = namedParameterJdbcTemplate.queryForList("SELECT test_item.item_id FROM test_item WHERE launch_id IN (:ids);",
+		final List<Long> itemIds = namedParameterJdbcTemplate.queryForList("SELECT item_id FROM test_item WHERE launch_id IN (:ids) UNION "
+						+ "SELECT item_id FROM test_item WHERE retry_of IS NOT NULL AND retry_of IN "
+						+ "(SELECT item_id FROM test_item WHERE launch_id IN (:ids))",
 				Map.of(IDS_PARAM, launchIds),
 				Long.class
 		);
