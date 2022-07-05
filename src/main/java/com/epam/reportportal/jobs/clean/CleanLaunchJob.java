@@ -103,7 +103,7 @@ public class CleanLaunchJob extends BaseCleanJob {
 		Lists.partition(itemIds, batchSize)
 				.forEach(batch -> resultedNumber.addAndGet(Optional.ofNullable(namedParameterJdbcTemplate.queryForObject(
 						"SELECT COUNT(*) FROM log WHERE item_id IN (:ids);",
-						Map.of(IDS_PARAM, itemIds),
+						Map.of(IDS_PARAM, batch),
 						Long.class
 				)).orElse(0L)));
 		resultedNumber.addAndGet(Optional.ofNullable(namedParameterJdbcTemplate.queryForObject("SELECT COUNT(*) FROM log WHERE log.launch_id IN (:ids);",
