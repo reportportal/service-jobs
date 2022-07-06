@@ -36,6 +36,11 @@ rp:
     username:
     password:
 
+  processing:
+    log:
+      maxBatchSize: 300
+      maxBatchTimeout: 1000 #milliseconds
+
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     driverClassName: org.postgresql.Driver
@@ -65,6 +70,7 @@ rp:
     apiuser:
     apipass:
     reply-timeout: 300000 #milliseconds
+    maxLogConsumer: 50
 
 datastore:
   path: /data/storage

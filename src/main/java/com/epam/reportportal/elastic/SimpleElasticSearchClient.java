@@ -8,8 +8,17 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.support.BasicAuthenticationInterceptor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Simple client to work with Elasticsearch.
+ * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
+ */
 @Service
 public class SimpleElasticSearchClient {
     private final String host;
@@ -33,6 +42,28 @@ public class SimpleElasticSearchClient {
         HttpEntity<String> request = getStringHttpEntity(personJsonObject.toString());
 
         restTemplate.postForObject(host + "/" + indexName + "/_doc", request, String.class);
+    }
+
+    public void save(List<LogMessage> logMessageList) {
+        if (CollectionUtils.isEmpty(logMessageList)) return;
+        Map<String, String> logsByIndex = new HashMap<>();
+
+        String create = "{\"create\":{ }}\n";
+
+        logMessageList.forEach(logMessage -> {
+            String indexName = "logs-reportportal-" + logMessage.getProjectId() + "-" + logMessage.getLaunchId();
+            String logCreateBody = create + convertToJson(logMessage) + "\n";
+
+            if (logsByIndex.containsKey(indexName)) {
+                logsByIndex.put(indexName, logsByIndex.get(indexName) + logCreateBody);
+            } else {
+                logsByIndex.put(indexName, logCreateBody);
+            }
+        });
+
+        logsByIndex.forEach((indexName, body) -> {
+            restTemplate.put(host + "/" + indexName + "/_bulk?refresh", getStringHttpEntity(body));
+        });
     }
 
     private JSONObject convertToJson(LogMessage logMessage) {
