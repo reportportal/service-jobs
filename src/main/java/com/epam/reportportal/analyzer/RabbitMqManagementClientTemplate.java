@@ -35,19 +35,21 @@ public class RabbitMqManagementClientTemplate implements RabbitMqManagementClien
 
 	public static final String ANALYZER_KEY = "analyzer";
 	static final String ANALYZER_PRIORITY = "analyzer_priority";
+	private final String virtualHost;
 
 	public static final ToIntFunction<ExchangeInfo> EXCHANGE_PRIORITY = it -> ofNullable(it.getArguments()
 			.get(ANALYZER_PRIORITY)).map(val -> NumberUtils.toInt(val.toString(), Integer.MAX_VALUE)).orElse(Integer.MAX_VALUE);
 
 	private final Client rabbitClient;
 
-	public RabbitMqManagementClientTemplate(Client rabbitClient) throws JsonProcessingException {
+	public RabbitMqManagementClientTemplate(Client rabbitClient, String virtualHost) throws JsonProcessingException {
 		this.rabbitClient = rabbitClient;
-		rabbitClient.createVhost(ANALYZER_KEY);
+		this.virtualHost = virtualHost;
+		rabbitClient.createVhost(virtualHost);
 	}
 
 	public List<ExchangeInfo> getAnalyzerExchangesInfo() {
-		return ofNullable(rabbitClient.getExchanges(ANALYZER_KEY)).map(client -> client.stream()
+		return ofNullable(rabbitClient.getExchanges(virtualHost)).map(client -> client.stream()
 						.filter(it -> it.getArguments().get(ANALYZER_KEY) != null)
 						.sorted(comparingInt(EXCHANGE_PRIORITY))
 						.collect(Collectors.toList()))

@@ -38,18 +38,20 @@ import java.net.URI;
 public class ProcessingRabbitMqConfiguration {
 
 	@Bean(name = "processingConnectionFactory")
-	public ConnectionFactory processingConnectionFactory(@Value("${rp.amqp.addresses}") URI addresses) {
+	public ConnectionFactory processingConnectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
+			@Value("${rp.amqp.base-vhost}") String virtualHost) {
 		CachingConnectionFactory factory = new CachingConnectionFactory(addresses);
-		factory.setVirtualHost("/");
+		factory.setVirtualHost(virtualHost);
 		return factory;
 	}
 
 	@Bean
 	public SimpleRabbitListenerContainerFactory processingRabbitListenerContainerFactory(
-			@Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter) {
+			@Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter,
+			@Value("${rp.amqp.maxLogConsumer}") int maxLogConsumer) {
 		SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
 		factory.setConnectionFactory(connectionFactory);
-		factory.setMaxConcurrentConsumers(20);
+		factory.setMaxConcurrentConsumers(maxLogConsumer);
 		factory.setMessageConverter(jsonMessageConverter);
 		return factory;
 	}
