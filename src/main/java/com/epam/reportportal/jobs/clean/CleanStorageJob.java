@@ -8,7 +8,7 @@ import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
@@ -17,8 +17,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Removing data from storage.
+ *
+ * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
-@Component
+@Service
 public class CleanStorageJob extends BaseJob {
 
     private static final String ROLLBACK_ERROR_MESSAGE = "Rollback deleting transaction.";

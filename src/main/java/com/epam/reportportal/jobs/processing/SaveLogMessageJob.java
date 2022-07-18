@@ -10,6 +10,7 @@ import java.util.Objects;
 
 /**
  * Log consumer.
+ *
  * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
 @Service

@@ -2,6 +2,8 @@ package com.epam.reportportal.elastic;
 
 import com.epam.reportportal.log.LogMessage;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -21,6 +23,9 @@ import java.util.Map;
  */
 @Service
 public class SimpleElasticSearchClient {
+
+    protected final Logger LOGGER = LoggerFactory.getLogger(SimpleElasticSearchClient.class);
+
     private final String host;
     private final RestTemplate restTemplate;
 
@@ -64,6 +69,16 @@ public class SimpleElasticSearchClient {
         logsByIndex.forEach((indexName, body) -> {
             restTemplate.put(host + "/" + indexName + "/_bulk?refresh", getStringHttpEntity(body));
         });
+    }
+
+    public void deleteStreamByLaunchIdAndProjectId(Long launchId, Long projectId) {
+        String indexName = "logs-reportportal-" + projectId + "-" + launchId;
+        try {
+            restTemplate.delete(host + "/_data_stream/" + indexName);
+        } catch (Exception exception) {
+            // to avoid checking of exists stream or not
+            LOGGER.info("DELETE stream from ES error " + indexName + " " + exception.getMessage());
+        }
     }
 
     private JSONObject convertToJson(LogMessage logMessage) {
