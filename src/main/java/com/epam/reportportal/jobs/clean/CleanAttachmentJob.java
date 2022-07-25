@@ -10,6 +10,9 @@ import java.time.ZoneOffset;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * Moving data from attachment table to attachment_deletion by storage policy
+ * for future deletion that attachment from storage by another job.
+ *
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
 @Service

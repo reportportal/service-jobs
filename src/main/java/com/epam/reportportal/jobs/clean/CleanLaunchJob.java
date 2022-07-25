@@ -1,6 +1,7 @@
 package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
+import com.epam.reportportal.elastic.SimpleElasticSearchClient;
 import com.epam.reportportal.events.ElementsDeletedEvent;
 import com.google.common.collect.Lists;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -38,16 +39,18 @@ public class CleanLaunchJob extends BaseCleanJob {
 	private final CleanLogJob cleanLogJob;
 	private final IndexerServiceClient indexerServiceClient;
 	private final ApplicationEventPublisher eventPublisher;
+	private final SimpleElasticSearchClient elasticSearchClient;
 
 	public CleanLaunchJob(@Value("${rp.environment.variable.elements-counter.batch-size}") Integer batchSize, JdbcTemplate jdbcTemplate,
 			NamedParameterJdbcTemplate namedParameterJdbcTemplate, CleanLogJob cleanLogJob, IndexerServiceClient indexerServiceClient,
-			ApplicationEventPublisher eventPublisher) {
+			ApplicationEventPublisher eventPublisher, SimpleElasticSearchClient elasticSearchClient) {
 		super(jdbcTemplate);
 		this.batchSize = batchSize;
 		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
 		this.cleanLogJob = cleanLogJob;
 		this.indexerServiceClient = indexerServiceClient;
 		this.eventPublisher = eventPublisher;
+		this.elasticSearchClient = elasticSearchClient;
 	}
 
 	@Scheduled(cron = "${rp.environment.variable.clean.launch.cron}")
@@ -73,11 +76,22 @@ public class CleanLaunchJob extends BaseCleanJob {
 				if (deleted > 0) {
 					indexerServiceClient.removeFromIndexLessThanLaunchDate(projectId, lessThanDate);
 					LOGGER.info("Send message for deletion to analyzer for project {}", projectId);
+
+					deleteLogsFromElasticsearchByLaunchIdsAndProjectId(launchIds, projectId);
+
 					eventPublisher.publishEvent(new ElementsDeletedEvent(launchIds, projectId, numberOfLaunchElements));
+					LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
 				}
 			}
 		});
 		logFinish(counter.get());
+	}
+
+	private void deleteLogsFromElasticsearchByLaunchIdsAndProjectId(List<Long> launchIds, Long projectId) {
+		for (Long launchId : launchIds) {
+			elasticSearchClient.deleteStreamByLaunchIdAndProjectId(launchId, projectId);
+			LOGGER.info("Delete logs from ES by launch {} and project {}", launchId, projectId);
+		}
 	}
 
 	private List<Long> getLaunchIds(Long projectId, LocalDateTime lessThanDate) {
