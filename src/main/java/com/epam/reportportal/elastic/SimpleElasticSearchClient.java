@@ -38,17 +38,6 @@ public class SimpleElasticSearchClient {
         this.host = host;
     }
 
-    public void save(LogMessage logMessage) {
-        Long launchId = logMessage.getLaunchId();
-        String indexName = "logs-reportportal-" + logMessage.getProjectId() + "-" + launchId;
-
-        JSONObject personJsonObject = convertToJson(logMessage);
-
-        HttpEntity<String> request = getStringHttpEntity(personJsonObject.toString());
-
-        restTemplate.postForObject(host + "/" + indexName + "/_doc", request, String.class);
-    }
-
     public void save(List<LogMessage> logMessageList) {
         if (CollectionUtils.isEmpty(logMessageList)) return;
         Map<String, String> logsByIndex = new HashMap<>();
@@ -56,7 +45,7 @@ public class SimpleElasticSearchClient {
         String create = "{\"create\":{ }}\n";
 
         logMessageList.forEach(logMessage -> {
-            String indexName = "logs-reportportal-" + logMessage.getProjectId() + "-" + logMessage.getLaunchId();
+            String indexName = "logs-reportportal-" + logMessage.getProjectId();
             String logCreateBody = create + convertToJson(logMessage) + "\n";
 
             if (logsByIndex.containsKey(indexName)) {
@@ -71,14 +60,30 @@ public class SimpleElasticSearchClient {
         });
     }
 
-    public void deleteStreamByLaunchIdAndProjectId(Long launchId, Long projectId) {
-        String indexName = "logs-reportportal-" + projectId + "-" + launchId;
+    public void deleteLogsByLaunchIdAndProjectId(Long launchId, Long projectId) {
+        String indexName = "logs-reportportal-" + projectId;
         try {
-            restTemplate.delete(host + "/_data_stream/" + indexName);
+            JSONObject deleteByLaunch = getDeleteLaunchJson(launchId);
+            HttpEntity<String> deleteRequest = getStringHttpEntity(deleteByLaunch.toString());
+
+            restTemplate.postForObject(host + "/" + indexName + "/_delete_by_query", deleteRequest, JSONObject.class);
         } catch (Exception exception) {
             // to avoid checking of exists stream or not
-            LOGGER.info("DELETE stream from ES error " + indexName + " " + exception.getMessage());
+            LOGGER.info("DELETE logs from stream ES error " + indexName + " " + exception.getMessage());
         }
+    }
+
+    private JSONObject getDeleteLaunchJson(Long launchId) {
+        JSONObject match = new JSONObject();
+        match.put("launchId", launchId);
+
+        JSONObject query = new JSONObject();
+        query.put("match", match);
+
+        JSONObject deleteByLaunch = new JSONObject();
+        deleteByLaunch.put("query", query);
+
+        return deleteByLaunch;
     }
 
     private JSONObject convertToJson(LogMessage logMessage) {
@@ -87,6 +92,7 @@ public class SimpleElasticSearchClient {
         personJsonObject.put("message", logMessage.getLogMessage());
         personJsonObject.put("itemId", logMessage.getItemId());
         personJsonObject.put("@timestamp", logMessage.getLogTime());
+        personJsonObject.put("launchId", logMessage.getLaunchId());
 
         return personJsonObject;
     }
