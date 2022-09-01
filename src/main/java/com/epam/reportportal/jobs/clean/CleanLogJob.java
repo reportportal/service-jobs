@@ -1,7 +1,7 @@
 package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
-import com.epam.reportportal.elastic.SimpleElasticSearchClient;
+import com.epam.reportportal.elastic.ElasticSearchClient;
 import com.epam.reportportal.events.ElementsDeletedEvent;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.ApplicationEventPublisher;
@@ -31,12 +31,12 @@ public class CleanLogJob extends BaseCleanJob {
 	private final CleanAttachmentJob cleanAttachmentJob;
 	private final IndexerServiceClient indexerServiceClient;
 	private final ApplicationEventPublisher eventPublisher;
-	private final SimpleElasticSearchClient elasticSearchClient;
+	private final ElasticSearchClient elasticSearchClient;
 	private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
 	public CleanLogJob(JdbcTemplate jdbcTemplate, CleanAttachmentJob cleanAttachmentJob,
 					   IndexerServiceClient indexerServiceClient, ApplicationEventPublisher eventPublisher,
-					   SimpleElasticSearchClient elasticSearchClient, NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
+					   ElasticSearchClient elasticSearchClient, NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
 		super(jdbcTemplate);
 		this.cleanAttachmentJob = cleanAttachmentJob;
 		this.indexerServiceClient = indexerServiceClient;

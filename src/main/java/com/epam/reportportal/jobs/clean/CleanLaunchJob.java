@@ -1,7 +1,7 @@
 package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
-import com.epam.reportportal.elastic.SimpleElasticSearchClient;
+import com.epam.reportportal.elastic.ElasticSearchClient;
 import com.epam.reportportal.events.ElementsDeletedEvent;
 import com.google.common.collect.Lists;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -39,11 +39,11 @@ public class CleanLaunchJob extends BaseCleanJob {
 	private final CleanLogJob cleanLogJob;
 	private final IndexerServiceClient indexerServiceClient;
 	private final ApplicationEventPublisher eventPublisher;
-	private final SimpleElasticSearchClient elasticSearchClient;
+	private final ElasticSearchClient elasticSearchClient;
 
 	public CleanLaunchJob(@Value("${rp.environment.variable.elements-counter.batch-size}") Integer batchSize, JdbcTemplate jdbcTemplate,
 			NamedParameterJdbcTemplate namedParameterJdbcTemplate, CleanLogJob cleanLogJob, IndexerServiceClient indexerServiceClient,
-			ApplicationEventPublisher eventPublisher, SimpleElasticSearchClient elasticSearchClient) {
+			ApplicationEventPublisher eventPublisher, ElasticSearchClient elasticSearchClient) {
 		super(jdbcTemplate);
 		this.batchSize = batchSize;
 		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;

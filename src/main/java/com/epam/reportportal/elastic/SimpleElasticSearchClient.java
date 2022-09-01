@@ -5,6 +5,8 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -21,8 +23,10 @@ import java.util.Map;
  * Simple client to work with Elasticsearch.
  * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
+@Primary
 @Service
-public class SimpleElasticSearchClient {
+@ConditionalOnProperty(prefix = "rp.elasticsearch", name = "host")
+public class SimpleElasticSearchClient implements ElasticSearchClient {
 
     protected final Logger LOGGER = LoggerFactory.getLogger(SimpleElasticSearchClient.class);
 
@@ -38,6 +42,7 @@ public class SimpleElasticSearchClient {
         this.host = host;
     }
 
+    @Override
     public void save(LogMessage logMessage) {
         Long launchId = logMessage.getLaunchId();
         String indexName = "logs-reportportal-" + logMessage.getProjectId() + "-" + launchId;
@@ -49,6 +54,7 @@ public class SimpleElasticSearchClient {
         restTemplate.postForObject(host + "/" + indexName + "/_doc", request, String.class);
     }
 
+    @Override
     public void save(List<LogMessage> logMessageList) {
         if (CollectionUtils.isEmpty(logMessageList)) return;
         Map<String, String> logsByIndex = new HashMap<>();
@@ -71,6 +77,7 @@ public class SimpleElasticSearchClient {
         });
     }
 
+    @Override
     public void deleteStreamByLaunchIdAndProjectId(Long launchId, Long projectId) {
         String indexName = "logs-reportportal-" + projectId + "-" + launchId;
         try {
