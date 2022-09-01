@@ -82,7 +82,7 @@ public class CleanLogJob extends BaseCleanJob {
 
 	private void deleteLogsFromElasticsearchByLaunchIdsAndProjectId(List<Long> launchIds, Long projectId) {
 		for (Long launchId : launchIds) {
-			elasticSearchClient.deleteStreamByLaunchIdAndProjectId(launchId, projectId);
+			elasticSearchClient.deleteLogsByLaunchIdAndProjectId(launchId, projectId);
 			LOGGER.info("Delete logs from ES by launch {} and project {}", launchId, projectId);
 		}
 	}

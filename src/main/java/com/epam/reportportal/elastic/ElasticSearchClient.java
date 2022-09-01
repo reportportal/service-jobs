@@ -10,9 +10,7 @@ import java.util.List;
  */
 public interface ElasticSearchClient {
 
-    void save(LogMessage logMessage);
-
     void save(List<LogMessage> logMessageList);
 
-    void deleteStreamByLaunchIdAndProjectId(Long launchId, Long projectId);
+    void deleteLogsByLaunchIdAndProjectId(Long launchId, Long projectId);
 }
