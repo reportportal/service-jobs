@@ -1,5 +1,5 @@
 plugins {
-    id 'org.springframework.boot' version '2.4.3'
+    id 'org.springframework.boot' version '2.5.14'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'java'
 }
@@ -14,14 +14,14 @@ def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/
 apply from: "$scriptsUrl/build-docker.gradle"
 apply from: "$scriptsUrl/build-commons.gradle"
 apply from: "$scriptsUrl/build-info.gradle"
-apply from: "$scriptsUrl/build-quality.gradle"
+//apply from: "$scriptsUrl/build-quality.gradle"
 apply from: "$scriptsUrl/release-service.gradle"
 apply from: "$scriptsUrl/signing.gradle"
 
 sourceCompatibility = '11'
 
 wrapper {
-    gradleVersion = '6.3'
+    gradleVersion = '6.8'
 }
 
 bootJar {
@@ -44,8 +44,11 @@ processResources {
 
 //https://nvd.nist.gov/vuln/detail/CVE-2020-9488 and https://nvd.nist.gov/vuln/detail/CVE-2021-44228 and https://nvd.nist.gov/vuln/detail/CVE-2021-45046 and
 //https://nvd.nist.gov/vuln/detail/CVE-2021-45105
-ext['log4j2.version'] = '2.17.0'
-ext['log4j-to-slf4j.version'] = '2.17.0'
+ext['log4j2.version'] = '2.17.1'
+ext['log4j-to-slf4j.version'] = '2.17.1'
+//https://nvd.nist.gov/vuln/detail/CVE-2022-26520
+ext['postgresql.version'] = '42.4.1'
+ext['snakeyaml.version'] = '1.31'
 //
 
 dependencies {
@@ -69,6 +72,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
     implementation 'io.minio:minio:6.0.13'
+//    https://avd.aquasec.com/nvd/cve-2020-8908
+//    implementation 'com.google.guava:guava:30.0-jre';
 
     compile "com.rabbitmq:http-client:2.1.0.RELEASE"
 
