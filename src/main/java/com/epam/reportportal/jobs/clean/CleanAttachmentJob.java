@@ -40,7 +40,7 @@ public class CleanAttachmentJob extends BaseCleanJob {
 			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
 			int movedCount = jdbcTemplate.update(MOVING_QUERY, projectId, lessThanDate);
 			counter.addAndGet(movedCount);
-			LOGGER.info("Moved {} attachments to the deletion table for project {}", movedCount, projectId);
+			LOGGER.info("Moved {} attachments to the deletion table for project {}, lessThanDate {} ", movedCount, projectId, lessThanDate);
 		});
 		logFinish(counter.get());
 	}
