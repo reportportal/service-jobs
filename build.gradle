@@ -68,7 +68,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
-    implementation 'io.minio:minio:6.0.13'
+    implementation 'org.apache.jclouds.api:s3:2.5.0'
 
     compile "com.rabbitmq:http-client:2.1.0.RELEASE"
 

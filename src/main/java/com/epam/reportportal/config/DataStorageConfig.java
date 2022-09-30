@@ -2,10 +2,10 @@ package com.epam.reportportal.config;
 
 import com.epam.reportportal.storage.DataStorageService;
 import com.epam.reportportal.storage.LocalDataStorageService;
-import com.epam.reportportal.storage.MinioDataStorageService;
-import io.minio.MinioClient;
-import io.minio.errors.InvalidEndpointException;
-import io.minio.errors.InvalidPortException;
+import com.epam.reportportal.storage.S3DataStorageService;
+import org.jclouds.ContextBuilder;
+import org.jclouds.blobstore.BlobStore;
+import org.jclouds.blobstore.BlobStoreContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -23,19 +23,23 @@ public class DataStorageConfig {
     }
 
     @Bean
-    @ConditionalOnProperty(name = "datastore.type", havingValue = "minio")
-    public MinioClient minioClient(@Value("${datastore.minio.endpoint}") String endpoint,
-                                   @Value("${datastore.minio.accessKey}") String accessKey, @Value("${datastore.minio.secretKey}") String secretKey,
-                                   @Value("${datastore.minio.region}") String region) throws InvalidPortException, InvalidEndpointException {
-        return new MinioClient(endpoint, accessKey, secretKey, region);
+    @ConditionalOnProperty(name = "datastore.type", havingValue = "s3")
+    public BlobStore blobStore(@Value("${datastore.s3.endpoint}") String endpoint,
+            @Value("${datastore.s3.accessKey}") String accessKey, @Value("${datastore.s3.secretKey}") String secretKey) {
+        BlobStoreContext blobStoreContext = ContextBuilder.newBuilder("s3")
+                .endpoint(endpoint)
+                .credentials(accessKey, secretKey)
+                .buildView(BlobStoreContext.class);
+
+        return blobStoreContext.getBlobStore();
     }
 
     @Bean
     @Primary
-    @ConditionalOnProperty(name = "datastore.type", havingValue = "minio")
-    public DataStorageService minioDataStore(@Autowired MinioClient minioClient,
-                                                  @Value("${datastore.minio.bucketPrefix}") String bucketPrefix,
-                                                  @Value("${datastore.minio.defaultBucketName}") String defaultBucketName) {
-        return new MinioDataStorageService(minioClient, bucketPrefix, defaultBucketName);
+    @ConditionalOnProperty(name = "datastore.type", havingValue = "s3")
+    public DataStorageService s3DataStore(@Autowired BlobStore blobStore,
+                                                  @Value("${datastore.s3.bucketPrefix}") String bucketPrefix,
+                                                  @Value("${datastore.s3.defaultBucketName}") String defaultBucketName) {
+        return new S3DataStorageService(blobStore, bucketPrefix, defaultBucketName);
     }
 }
