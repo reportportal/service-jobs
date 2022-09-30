@@ -16,7 +16,7 @@
 
 package com.epam.reportportal.storage;
 
-import io.minio.MinioClient;
+import org.jclouds.blobstore.BlobStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,18 +24,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * Minio storage service
+ * S3 storage service
  */
-public class MinioDataStorageService implements DataStorageService {
+public class S3DataStorageService implements DataStorageService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MinioDataStorageService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(S3DataStorageService.class);
 
-    private final MinioClient minioClient;
+    private final BlobStore blobStore;
     private final String bucketPrefix;
     private final String defaultBucketName;
 
-    public MinioDataStorageService(MinioClient minioClient, String bucketPrefix, String defaultBucketName) {
-        this.minioClient = minioClient;
+    public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String defaultBucketName) {
+        this.blobStore = blobStore;
         this.bucketPrefix = bucketPrefix;
         this.defaultBucketName = defaultBucketName;
     }
@@ -57,7 +57,7 @@ public class MinioDataStorageService implements DataStorageService {
         }
 
         try {
-            minioClient.removeObject(bucket, objectName);
+            blobStore.removeBlob(bucket, objectName);
         } catch (Exception e) {
             LOGGER.error("Unable to delete file '{}'", filePath, e);
             throw e;
