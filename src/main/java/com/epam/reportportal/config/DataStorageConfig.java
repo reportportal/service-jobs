@@ -29,6 +29,7 @@ public class DataStorageConfig {
         BlobStoreContext blobStoreContext = ContextBuilder.newBuilder("s3")
                 .endpoint(endpoint)
                 .credentials(accessKey, secretKey)
+                .apiVersion("4")
                 .buildView(BlobStoreContext.class);
 
         return blobStoreContext.getBlobStore();
