@@ -53,9 +53,9 @@ ext['snakeyaml.version'] = '1.31'
 
 dependencies {
     if (releaseMode) {
-        implementation 'com.github.reportportal:commons-events:f130879'
+        implementation 'com.github.reportportal:commons-events:5.7.3'
     } else {
-        implementation 'com.github.reportportal:commons-events:f130879'
+        implementation 'com.github.reportportal:commons-events:35a1246f'
     }
 
     implementation group: 'org.json', name: 'json', version: '20220320'
