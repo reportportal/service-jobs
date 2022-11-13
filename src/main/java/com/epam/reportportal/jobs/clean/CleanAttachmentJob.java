@@ -10,6 +10,9 @@ import java.time.ZoneOffset;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * Moving data from attachment table to attachment_deletion by storage policy
+ * for future deletion that attachment from storage by another job.
+ *
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
 @Service
@@ -37,7 +40,7 @@ public class CleanAttachmentJob extends BaseCleanJob {
 			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
 			int movedCount = jdbcTemplate.update(MOVING_QUERY, projectId, lessThanDate);
 			counter.addAndGet(movedCount);
-			LOGGER.info("Moved {} attachments to the deletion table for project {}", movedCount, projectId);
+			LOGGER.info("Moved {} attachments to the deletion table for project {}, lessThanDate {} ", movedCount, projectId, lessThanDate);
 		});
 		logFinish(counter.get());
 	}

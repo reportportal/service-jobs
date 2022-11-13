@@ -1,8 +1,9 @@
 package com.epam.reportportal.log;
 
 import com.epam.reportportal.calculation.BatchProcessing;
-import com.epam.reportportal.elastic.SimpleElasticSearchClient;
+import com.epam.reportportal.elastic.ElasticSearchClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.concurrent.DefaultManagedTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -14,21 +15,22 @@ import java.util.List;
  * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
 @Component
+@ConditionalOnProperty(prefix = "rp.elasticsearch", name = "host")
 public class LogProcessing extends BatchProcessing<LogMessage> {
 
-    private final SimpleElasticSearchClient simpleElasticSearchClient;
+    private final ElasticSearchClient elasticSearchClient;
 
-    public LogProcessing(SimpleElasticSearchClient simpleElasticSearchClient,
+    public LogProcessing(ElasticSearchClient elasticSearchClient,
                          @Value("${rp.processing.log.maxBatchSize}") int batchSize,
                          @Value("${rp.processing.log.maxBatchTimeout}") int timeout) {
         super(batchSize, timeout, new DefaultManagedTaskScheduler());
-        this.simpleElasticSearchClient = simpleElasticSearchClient;
+        this.elasticSearchClient = elasticSearchClient;
     }
 
     @Override
     protected void process(List<LogMessage> logMessageList) {
         if (!CollectionUtils.isEmpty(logMessageList)) {
-            simpleElasticSearchClient.save(logMessageList);
+            elasticSearchClient.save(logMessageList);
         }
     }
 }

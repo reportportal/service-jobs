@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 @Service
 public class CleanMaterializedViewJob extends BaseJob {
 
-	private static final String ID_PARAM = "id";
 	private static final String TIME_BOUND_PARAM = "timeBound";
 	private static final String BATCH_SIZE_PARAM = "batchSize";
 
