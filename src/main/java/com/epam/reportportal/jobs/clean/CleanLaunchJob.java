@@ -68,7 +68,7 @@ public class CleanLaunchJob extends BaseCleanJob {
 			final List<Long> launchIds = getLaunchIds(projectId, lessThanDate);
 			if (!launchIds.isEmpty()) {
 				deleteClusters(launchIds);
-				final Long numberOfLaunchElements = countNumberOfLaunchElements(launchIds);
+//				final Long numberOfLaunchElements = countNumberOfLaunchElements(launchIds);
 				int deleted = namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY, Map.of(IDS_PARAM, launchIds));
 				counter.addAndGet(deleted);
 				LOGGER.info("Delete {} launches for project {}", deleted, projectId);
@@ -79,8 +79,8 @@ public class CleanLaunchJob extends BaseCleanJob {
 
 					deleteLogsFromElasticsearchByLaunchIdsAndProjectId(launchIds, projectId);
 
-					eventPublisher.publishEvent(new ElementsDeletedEvent(launchIds, projectId, numberOfLaunchElements));
-					LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
+//					eventPublisher.publishEvent(new ElementsDeletedEvent(launchIds, projectId, numberOfLaunchElements));
+//					LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
 				}
 			}
 		});

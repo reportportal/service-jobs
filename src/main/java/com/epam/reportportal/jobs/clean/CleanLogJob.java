@@ -72,8 +72,8 @@ public class CleanLogJob extends BaseCleanJob {
 					deleteLogsFromElasticsearchByLaunchIdsAndProjectId(launchIds, projectId);
 				}
 
-				eventPublisher.publishEvent(new ElementsDeletedEvent(this, projectId, deleted));
-				LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
+//				eventPublisher.publishEvent(new ElementsDeletedEvent(this, projectId, deleted));
+//				LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
 			}
 		});
 
