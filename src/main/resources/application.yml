@@ -33,10 +33,10 @@ rp:
             project:
               core: 5
               max: 10
-  elasticsearch:
-    host: http://elasticsearch:9200
-    username:
-    password:
+#  elasticsearch:
+#    host: http://elasticsearch:9200
+#    username:
+#    password:
 
   processing:
     log:
