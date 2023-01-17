@@ -2,6 +2,7 @@ plugins {
     id 'org.springframework.boot' version '2.5.14'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'java'
+    id "org.sonarqube" version "3.5.0.2730"
 }
 
 project.ext {
@@ -92,6 +93,14 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+sonarqube {
+  properties {
+    property "sonar.projectKey", "reportportal_service-jobs"
+    property "sonar.organization", "reportportal"
+    property "sonar.host.url", "https://sonarcloud.io"
+  }
 }
 
 addDockerfileToGit.dependsOn createDockerfile
