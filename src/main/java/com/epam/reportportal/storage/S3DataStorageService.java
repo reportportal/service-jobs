@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 
 /**
  * S3 storage service
@@ -33,10 +34,12 @@ public class S3DataStorageService implements DataStorageService {
     private final BlobStore blobStore;
     private final String bucketPrefix;
     private final String defaultBucketName;
+    private final String bucketPostfix;
 
-    public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String defaultBucketName) {
+    public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String bucketPostfix, String defaultBucketName) {
         this.blobStore = blobStore;
         this.bucketPrefix = bucketPrefix;
+        this.bucketPostfix = Objects.requireNonNullElse(bucketPostfix, "");
         this.defaultBucketName = defaultBucketName;
     }
 
@@ -49,10 +52,10 @@ public class S3DataStorageService implements DataStorageService {
         String objectName;
 
         if (nameCount > 1) {
-            bucket = bucketPrefix + retrievePath(targetPath, 0, 1);
+            bucket = bucketPrefix + retrievePath(targetPath, 0, 1) + bucketPostfix;
             objectName = retrievePath(targetPath, 1, nameCount);
         } else {
-            bucket = defaultBucketName;
+            bucket = bucketPrefix + defaultBucketName + bucketPostfix;
             objectName = retrievePath(targetPath, 0, 1);
         }
 
