@@ -81,6 +81,7 @@ datastore:
     accessKey:
     secretKey:
     bucketPrefix: prj-
+    bucketPostfix:
     defaultBucketName: rp-bucket
     region: #{null}
   # could be one of [filesystem, s3, minio]
