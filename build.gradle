@@ -1,5 +1,5 @@
 plugins {
-    id 'org.springframework.boot' version '2.5.14'
+    id 'org.springframework.boot' version '2.7.0'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'java'
 }
@@ -79,6 +79,8 @@ dependencies {
 //    implementation 'com.google.guava:guava:30.0-jre';
 
     compile "com.rabbitmq:http-client:2.1.0.RELEASE"
+    //Fix CVE
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
 
     runtimeOnly 'org.postgresql:postgresql'
 
