@@ -74,6 +74,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
     implementation 'org.apache.jclouds.api:s3:2.5.0'
     implementation 'org.apache.jclouds.provider:aws-s3:2.5.0'
+    //Needed for correct jcloud work
+    implementation 'com.google.code.gson:gson:2.8.9'
     implementation 'org.apache.httpcomponents:httpclient:4.5.13'
 //    https://avd.aquasec.com/nvd/cve-2020-8908
 //    implementation 'com.google.guava:guava:30.0-jre';
