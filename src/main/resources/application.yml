@@ -83,7 +83,7 @@ datastore:
     bucketPrefix: prj-
     defaultBucketName: rp-bucket
     region: #{null}
-  # could be one of [filesystem, minio]
+  # could be one of [filesystem, s3, minio]
   type: minio
 
 
