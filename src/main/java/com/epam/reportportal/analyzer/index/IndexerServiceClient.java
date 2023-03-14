@@ -24,25 +24,27 @@ import java.util.List;
  */
 public interface IndexerServiceClient {
 
-	/**
-	 * Remove documents with specified ids from index
-	 *
-	 * @param index Index to be cleaned
-	 * @param ids   Document ids to be deleted from index
-	 * @return Amount of deleted logs
-	 */
-	Long cleanIndex(Long index, List<Long> ids);
+  /**
+   * Remove documents with specified ids from index
+   *
+   * @param index Index to be cleaned
+   * @param ids   Document ids to be deleted from index
+   * @return Amount of deleted logs
+   */
+  Long cleanIndex(Long index, List<Long> ids);
 
-	/**
-	 * Remove documents from index by index and log time range.
-	 * @param index Index to be cleaned.
-	 */
-	void removeFromIndexLessThanLogDate(Long index, LocalDateTime lessThanDate);
+  /**
+   * Remove documents from index by index and log time range.
+   *
+   * @param index Index to be cleaned.
+   */
+  void removeFromIndexLessThanLogDate(Long index, LocalDateTime lessThanDate);
 
-	/**
-	 * Remove documents from index by index and log time range.
-	 * @param index Index to be cleaned
-	 */
-	void removeFromIndexLessThanLaunchDate(Long index, LocalDateTime lessThanDate);
+  /**
+   * Remove documents from index by index and log time range.
+   *
+   * @param index Index to be cleaned
+   */
+  void removeFromIndexLessThanLaunchDate(Long index, LocalDateTime lessThanDate);
 
 }

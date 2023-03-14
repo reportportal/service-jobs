@@ -16,33 +16,32 @@
 
 package com.epam.reportportal.storage;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Local storage service
  */
 public class LocalDataStorageService implements DataStorageService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LocalDataStorageService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalDataStorageService.class);
 
-    private final String storageRootPath;
+  private final String storageRootPath;
 
-    public LocalDataStorageService(String storageRootPath) {
-        this.storageRootPath = storageRootPath;
+  public LocalDataStorageService(String storageRootPath) {
+    this.storageRootPath = storageRootPath;
+  }
+
+  @Override
+  public void delete(String filePath) throws IOException {
+    try {
+      Files.deleteIfExists(Paths.get(storageRootPath, filePath));
+    } catch (IOException e) {
+      LOGGER.error("Unable to delete file '{}'", filePath, e);
+      throw e;
     }
-
-    @Override
-    public void delete(String filePath) throws IOException {
-        try {
-            Files.deleteIfExists(Paths.get(storageRootPath, filePath));
-        } catch (IOException e) {
-            LOGGER.error("Unable to delete file '{}'", filePath, e);
-            throw e;
-        }
-    }
+  }
 }
