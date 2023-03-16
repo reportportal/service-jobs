@@ -12,14 +12,15 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @Configuration
 public class ExecutorConfig {
 
-	@Bean
-	public TaskExecutor projectAllocatedStorageExecutor(@Value("${rp.environment.variable.executor.pool.storage.project.core}") Integer corePoolSize,
-			@Value("${rp.environment.variable.executor.pool.storage.project.max}") Integer maxPoolSize) {
-		final ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
-		threadPoolTaskExecutor.setCorePoolSize(corePoolSize);
-		threadPoolTaskExecutor.setMaxPoolSize(maxPoolSize);
-		threadPoolTaskExecutor.setAllowCoreThreadTimeOut(true);
-		threadPoolTaskExecutor.setThreadNamePrefix("prj-alloc-storage");
-		return threadPoolTaskExecutor;
-	}
+  @Bean
+  public TaskExecutor projectAllocatedStorageExecutor(
+      @Value("${rp.environment.variable.executor.pool.storage.project.core}") Integer corePoolSize,
+      @Value("${rp.environment.variable.executor.pool.storage.project.max}") Integer maxPoolSize) {
+    final ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
+    threadPoolTaskExecutor.setCorePoolSize(corePoolSize);
+    threadPoolTaskExecutor.setMaxPoolSize(maxPoolSize);
+    threadPoolTaskExecutor.setAllowCoreThreadTimeOut(true);
+    threadPoolTaskExecutor.setThreadNamePrefix("prj-alloc-storage");
+    return threadPoolTaskExecutor;
+  }
 }

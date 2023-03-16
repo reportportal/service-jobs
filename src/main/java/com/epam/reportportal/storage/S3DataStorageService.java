@@ -16,55 +16,54 @@
 
 package com.epam.reportportal.storage;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.jclouds.blobstore.BlobStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * S3 storage service
  */
 public class S3DataStorageService implements DataStorageService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(S3DataStorageService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(S3DataStorageService.class);
 
-    private final BlobStore blobStore;
-    private final String bucketPrefix;
-    private final String defaultBucketName;
+  private final BlobStore blobStore;
+  private final String bucketPrefix;
+  private final String defaultBucketName;
 
-    public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String defaultBucketName) {
-        this.blobStore = blobStore;
-        this.bucketPrefix = bucketPrefix;
-        this.defaultBucketName = defaultBucketName;
+  public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String defaultBucketName) {
+    this.blobStore = blobStore;
+    this.bucketPrefix = bucketPrefix;
+    this.defaultBucketName = defaultBucketName;
+  }
+
+  @Override
+  public void delete(String filePath) throws Exception {
+    Path targetPath = Paths.get(filePath);
+    int nameCount = targetPath.getNameCount();
+
+    String bucket;
+    String objectName;
+
+    if (nameCount > 1) {
+      bucket = bucketPrefix + retrievePath(targetPath, 0, 1);
+      objectName = retrievePath(targetPath, 1, nameCount);
+    } else {
+      bucket = defaultBucketName;
+      objectName = retrievePath(targetPath, 0, 1);
     }
 
-    @Override
-    public void delete(String filePath) throws Exception {
-        Path targetPath = Paths.get(filePath);
-        int nameCount = targetPath.getNameCount();
-
-        String bucket;
-        String objectName;
-
-        if (nameCount > 1) {
-            bucket = bucketPrefix + retrievePath(targetPath, 0, 1);
-            objectName = retrievePath(targetPath, 1, nameCount);
-        } else {
-            bucket = defaultBucketName;
-            objectName = retrievePath(targetPath, 0, 1);
-        }
-
-        try {
-            blobStore.removeBlob(bucket, objectName);
-        } catch (Exception e) {
-            LOGGER.error("Unable to delete file '{}'", filePath, e);
-            throw e;
-        }
+    try {
+      blobStore.removeBlob(bucket, objectName);
+    } catch (Exception e) {
+      LOGGER.error("Unable to delete file '{}'", filePath, e);
+      throw e;
     }
+  }
 
-    private String retrievePath(Path path, int beginIndex, int endIndex) {
-        return String.valueOf(path.subpath(beginIndex, endIndex));
-    }
+  private String retrievePath(Path path, int beginIndex, int endIndex) {
+    return String.valueOf(path.subpath(beginIndex, endIndex));
+  }
 }

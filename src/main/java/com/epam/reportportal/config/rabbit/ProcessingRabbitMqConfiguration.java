@@ -16,6 +16,7 @@
 
 package com.epam.reportportal.config.rabbit;
 
+import java.net.URI;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
@@ -28,8 +29,6 @@ import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainer
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.net.URI;
-
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
@@ -37,35 +36,38 @@ import java.net.URI;
 @Configuration
 public class ProcessingRabbitMqConfiguration {
 
-	@Bean(name = "processingConnectionFactory")
-	public ConnectionFactory processingConnectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
-			@Value("${rp.amqp.base-vhost}") String virtualHost) {
-		CachingConnectionFactory factory = new CachingConnectionFactory(addresses);
-		factory.setVirtualHost(virtualHost);
-		return factory;
-	}
+  @Bean(name = "processingConnectionFactory")
+  public ConnectionFactory processingConnectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
+      @Value("${rp.amqp.base-vhost}") String virtualHost) {
+    CachingConnectionFactory factory = new CachingConnectionFactory(addresses);
+    factory.setVirtualHost(virtualHost);
+    return factory;
+  }
 
-	@Bean
-	public SimpleRabbitListenerContainerFactory processingRabbitListenerContainerFactory(
-			@Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter,
-			@Value("${rp.amqp.maxLogConsumer}") int maxLogConsumer) {
-		SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-		factory.setConnectionFactory(connectionFactory);
-		factory.setMaxConcurrentConsumers(maxLogConsumer);
-		factory.setMessageConverter(jsonMessageConverter);
-		return factory;
-	}
+  @Bean
+  public SimpleRabbitListenerContainerFactory processingRabbitListenerContainerFactory(
+      @Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory,
+      MessageConverter jsonMessageConverter,
+      @Value("${rp.amqp.maxLogConsumer}") int maxLogConsumer) {
+    SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+    factory.setConnectionFactory(connectionFactory);
+    factory.setMaxConcurrentConsumers(maxLogConsumer);
+    factory.setMessageConverter(jsonMessageConverter);
+    return factory;
+  }
 
-	@Bean
-	public RabbitAdmin processingRabbitAdmin(@Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory) {
-		return new RabbitAdmin(connectionFactory);
-	}
+  @Bean
+  public RabbitAdmin processingRabbitAdmin(
+      @Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory) {
+    return new RabbitAdmin(connectionFactory);
+  }
 
-	@Bean
-	SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-			SimpleRabbitListenerContainerFactoryConfigurer configurer, @Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory) {
-		SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-		configurer.configure(factory, connectionFactory);
-		return factory;
-	}
+  @Bean
+  SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+      SimpleRabbitListenerContainerFactoryConfigurer configurer,
+      @Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory) {
+    SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+    configurer.configure(factory, connectionFactory);
+    return factory;
+  }
 }

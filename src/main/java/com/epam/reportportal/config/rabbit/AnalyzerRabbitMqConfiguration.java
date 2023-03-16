@@ -21,6 +21,9 @@ import com.epam.reportportal.analyzer.RabbitMqManagementClientTemplate;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.http.client.Client;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -33,10 +36,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
@@ -44,41 +43,43 @@ import java.net.URISyntaxException;
 @Configuration
 public class AnalyzerRabbitMqConfiguration {
 
-	private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper;
 
-	@Autowired
-	public AnalyzerRabbitMqConfiguration(ObjectMapper objectMapper) {
-		this.objectMapper = objectMapper;
-	}
+  @Autowired
+  public AnalyzerRabbitMqConfiguration(ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
+  }
 
-	@Bean
-	public MessageConverter jsonMessageConverter() {
-		return new Jackson2JsonMessageConverter(objectMapper);
-	}
+  @Bean
+  public MessageConverter jsonMessageConverter() {
+    return new Jackson2JsonMessageConverter(objectMapper);
+  }
 
-	@Bean
-	public RabbitMqManagementClient managementTemplate(@Value("${rp.amqp.api-address}") String address,
-			@Value("${rp.amqp.analyzer-vhost}") String virtualHost)
-			throws MalformedURLException, URISyntaxException, JsonProcessingException {
-		final Client rabbitClient = new Client(address);
-		return new RabbitMqManagementClientTemplate(rabbitClient, virtualHost);
-	}
+  @Bean
+  public RabbitMqManagementClient managementTemplate(
+      @Value("${rp.amqp.api-address}") String address,
+      @Value("${rp.amqp.analyzer-vhost}") String virtualHost)
+      throws MalformedURLException, URISyntaxException, JsonProcessingException {
+    final Client rabbitClient = new Client(address);
+    return new RabbitMqManagementClientTemplate(rabbitClient, virtualHost);
+  }
 
-	@Bean(name = "analyzerConnectionFactory")
-	public ConnectionFactory analyzerConnectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
-			@Value("${rp.amqp.analyzer-vhost}") String virtualHost) {
-		CachingConnectionFactory factory = new CachingConnectionFactory(addresses);
-		factory.setVirtualHost(virtualHost);
-		return factory;
-	}
+  @Bean(name = "analyzerConnectionFactory")
+  public ConnectionFactory analyzerConnectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
+      @Value("${rp.amqp.analyzer-vhost}") String virtualHost) {
+    CachingConnectionFactory factory = new CachingConnectionFactory(addresses);
+    factory.setVirtualHost(virtualHost);
+    return factory;
+  }
 
-	@Bean(name = "analyzerRabbitTemplate")
-	public RabbitTemplate analyzerRabbitTemplate(@Autowired @Qualifier("analyzerConnectionFactory") ConnectionFactory connectionFactory,
-			@Value("${rp.amqp.reply-timeout}") long replyTimeout) {
-		RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-		rabbitTemplate.setMessageConverter(jsonMessageConverter());
-		rabbitTemplate.setReplyTimeout(replyTimeout);
-		return rabbitTemplate;
-	}
+  @Bean(name = "analyzerRabbitTemplate")
+  public RabbitTemplate analyzerRabbitTemplate(
+      @Autowired @Qualifier("analyzerConnectionFactory") ConnectionFactory connectionFactory,
+      @Value("${rp.amqp.reply-timeout}") long replyTimeout) {
+    RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+    rabbitTemplate.setMessageConverter(jsonMessageConverter());
+    rabbitTemplate.setReplyTimeout(replyTimeout);
+    return rabbitTemplate;
+  }
 
 }
