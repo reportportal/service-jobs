@@ -40,7 +40,6 @@ public class CleanStorageJob extends BaseJob {
     @SchedulerLock(name = "cleanStorage", lockAtMostFor = "24h")
     @Transactional
     public void execute() {
-        logStart();
         AtomicInteger counter = new AtomicInteger(0);
 
         jdbcTemplate.query(SELECT_AND_DELETE_DATA_CHUNK_QUERY, rs -> {
@@ -55,8 +54,6 @@ public class CleanStorageJob extends BaseJob {
                 throw new RuntimeException(ROLLBACK_ERROR_MESSAGE, e);
             }
         }, chunkSize);
-
-        logFinish(counter.get());
     }
 
     private void delete(String fileId, String thumbnailId) throws Exception {
