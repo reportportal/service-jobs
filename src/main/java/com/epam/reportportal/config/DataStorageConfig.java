@@ -1,14 +1,32 @@
+/*
+ * Copyright 2019 EPAM Systems
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.epam.reportportal.config;
 
 import com.epam.reportportal.storage.DataStorageService;
 import com.epam.reportportal.storage.LocalDataStorageService;
 import com.epam.reportportal.storage.S3DataStorageService;
+import com.epam.reportportal.utils.FeatureFlagHandler;
 import com.google.common.base.Optional;
 import com.google.common.base.Supplier;
 import com.google.common.cache.CacheLoader;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.inject.Module;
+import java.util.Set;
 import org.jclouds.ContextBuilder;
 import org.jclouds.aws.s3.config.AWSS3HttpApiModule;
 import org.jclouds.blobstore.BlobStore;
@@ -23,137 +41,173 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
-import java.util.Set;
-
+/**
+ * Blob storage configuration.
+ *
+ * @author Dzianis_Shybeka
+ */
 @Configuration
 public class DataStorageConfig {
 
-	/**
-	 * Amazon has a general work flow they publish that allows clients to always find the correct URL endpoint for a given bucket:
-	 * 1) ask s3.amazonaws.com for the bucket location
-	 * 2) use the url returned to make the container specific request (get/put, etc)
-	 * Jclouds cache the results from the first getBucketLocation call and use that region-specific URL, as needed.
-	 * In this custom implementation of {@link AWSS3HttpApiModule} we are providing location from environment variable, so that
-	 * we don't need to make getBucketLocation call
-	 */
-	@ConfiguresHttpApi
-	private static class CustomBucketToRegionModule extends AWSS3HttpApiModule {
-		private final String region;
+  /**
+   * Amazon has a general work flow they publish that allows clients to always find the correct
+   * URL endpoint for a given bucket:
+   * 1) ask s3.amazonaws.com for the bucket location
+   * 2) use the url returned to make the container specific request (get/put, etc)
+   * Jclouds cache the results from the first getBucketLocation call and use that
+   * region-specific URL, as needed.
+   * In this custom implementation of {@link AWSS3HttpApiModule} we are providing location
+   * from environment variable, so that we don't need to make getBucketLocation call
+   */
+  @ConfiguresHttpApi
+  private static class CustomBucketToRegionModule extends AWSS3HttpApiModule {
+    private final String region;
 
-		public CustomBucketToRegionModule(String region) {
-			this.region = region;
-		}
+    public CustomBucketToRegionModule(String region) {
+      this.region = region;
+    }
 
-		@Override
-		@SuppressWarnings("Guava")
-		protected CacheLoader<String, Optional<String>> bucketToRegion(Supplier<Set<String>> regionSupplier, S3Client client) {
-			Set<String> regions = regionSupplier.get();
-			if (regions.isEmpty()) {
-				return new CacheLoader<>() {
+    @Override
+    @SuppressWarnings("Guava")
+    protected CacheLoader<String, Optional<String>> bucketToRegion(
+        Supplier<Set<String>> regionSupplier, S3Client client) {
+      Set<String> regions = regionSupplier.get();
+      if (regions.isEmpty()) {
+        return new CacheLoader<>() {
 
-					@Override
-					@SuppressWarnings({ "Guava", "NullableProblems" })
-					public Optional<String> load(String bucket) {
-						if (CustomBucketToRegionModule.this.region != null) {
-							return Optional.of(CustomBucketToRegionModule.this.region);
-						}
-						return Optional.absent();
-					}
+          @Override
+          @SuppressWarnings({ "Guava", "NullableProblems" })
+          public Optional<String> load(String bucket) {
+            if (CustomBucketToRegionModule.this.region != null) {
+              return Optional.of(CustomBucketToRegionModule.this.region);
+            }
+            return Optional.absent();
+          }
 
-					@Override
-					public String toString() {
-						return "noRegions()";
-					}
-				};
-			} else if (regions.size() == 1) {
-				final String onlyRegion = Iterables.getOnlyElement(regions);
-				return new CacheLoader<>() {
-					@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-					final Optional<String> onlyRegionOption = Optional.of(onlyRegion);
+          @Override
+          public String toString() {
+            return "noRegions()";
+          }
+        };
+      } else if (regions.size() == 1) {
+        final String onlyRegion = Iterables.getOnlyElement(regions);
+        return new CacheLoader<>() {
+          @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+          final Optional<String> onlyRegionOption = Optional.of(onlyRegion);
 
-					@Override
-					@SuppressWarnings("NullableProblems")
-					public Optional<String> load(String bucket) {
-						if (CustomBucketToRegionModule.this.region != null) {
-							return Optional.of(CustomBucketToRegionModule.this.region);
-						}
-						return onlyRegionOption;
-					}
+          @Override
+          @SuppressWarnings("NullableProblems")
+          public Optional<String> load(String bucket) {
+            if (CustomBucketToRegionModule.this.region != null) {
+              return Optional.of(CustomBucketToRegionModule.this.region);
+            }
+            return onlyRegionOption;
+          }
 
-					@Override
-					public String toString() {
-						return "onlyRegion(" + onlyRegion + ")";
-					}
-				};
-			} else {
-				return new CacheLoader<>() {
-					@Override
-					@SuppressWarnings("NullableProblems")
-					public Optional<String> load(String bucket) {
-						if (CustomBucketToRegionModule.this.region != null) {
-							return Optional.of(CustomBucketToRegionModule.this.region);
-						}
-						try {
-							return Optional.fromNullable(client.getBucketLocation(bucket));
-						} catch (ContainerNotFoundException e) {
-							return Optional.absent();
-						}
-					}
+          @Override
+          public String toString() {
+            return "onlyRegion(" + onlyRegion + ")";
+          }
+        };
+      } else {
+        return new CacheLoader<>() {
+          @Override
+          @SuppressWarnings("NullableProblems")
+          public Optional<String> load(String bucket) {
+            if (CustomBucketToRegionModule.this.region != null) {
+              return Optional.of(CustomBucketToRegionModule.this.region);
+            }
+            try {
+              return Optional.fromNullable(client.getBucketLocation(bucket));
+            } catch (ContainerNotFoundException e) {
+              return Optional.absent();
+            }
+          }
 
-					@Override
-					public String toString() {
-						return "bucketToRegion()";
-					}
-				};
-			}
-		}
-	}
+          @Override
+          public String toString() {
+            return "bucketToRegion()";
+          }
+        };
+      }
+    }
+  }
 
-	@Bean
-	@ConditionalOnProperty(name = "datastore.type", havingValue = "filesystem")
-	public DataStorageService localDataStore(@Value("${datastore.default.path:/data/store}") String storagePath) {
-		return new LocalDataStorageService(storagePath);
-	}
+  @Bean
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "filesystem")
+  public DataStorageService localDataStore(
+      @Value("${datastore.default.path:/data/store}") String storagePath) {
+    return new LocalDataStorageService(storagePath);
+  }
 
-	@Bean
-	@ConditionalOnProperty(name = "datastore.type", havingValue = "minio")
-	public BlobStore minioBlobStore(@Value("${datastore.minio.accessKey}") String accessKey,
-			@Value("${datastore.minio.secretKey}") String secretKey, @Value("${datastore.minio.endpoint}") String endpoint) {
+  /**
+   * Creates BlobStore bean, that works with MinIO.
+   *
+   * @param accessKey accessKey to use
+   * @param secretKey secretKey to use
+   * @param endpoint  MinIO endpoint
+   * @return {@link BlobStore}
+   */
+  @Bean
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "minio")
+  public BlobStore minioBlobStore(@Value("${datastore.minio.accessKey}") String accessKey,
+      @Value("${datastore.minio.secretKey}") String secretKey,
+      @Value("${datastore.minio.endpoint}") String endpoint) {
 
-		BlobStoreContext blobStoreContext = ContextBuilder.newBuilder("s3")
-				.endpoint(endpoint)
-				.credentials(accessKey, secretKey)
-				.buildView(BlobStoreContext.class);
+    BlobStoreContext blobStoreContext =
+        ContextBuilder.newBuilder("s3").endpoint(endpoint).credentials(accessKey, secretKey)
+            .buildView(BlobStoreContext.class);
 
-		return blobStoreContext.getBlobStore();
-	}
+    return blobStoreContext.getBlobStore();
+  }
 
-	@Bean
-	@ConditionalOnProperty(name = "datastore.type", havingValue = "minio")
-	public DataStorageService minioDataStore(@Autowired BlobStore blobStore, @Value("${datastore.minio.bucketPrefix}") String bucketPrefix,
-			@Value("${datastore.minio.defaultBucketName}") String defaultBucketName) {
-		return new S3DataStorageService(blobStore, bucketPrefix, defaultBucketName);
-	}
+  /**
+   * Creates DataStore bean to work with MinIO.
+   *
+   * @param blobStore          {@link BlobStore} object
+   * @param bucketPrefix       Prefix for bucket name
+   * @param defaultBucketName  Name of default bucket to use
+   * @param featureFlagHandler Instance of {@link FeatureFlagHandler} to check enabled features
+   * @return {@link DataStorageService} object
+   */
+  @Bean
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "minio")
+  public DataStorageService minioDataStore(@Autowired BlobStore blobStore,
+      @Value("${datastore.minio.bucketPrefix}") String bucketPrefix,
+      @Value("${datastore.minio.defaultBucketName}") String defaultBucketName,
+      FeatureFlagHandler featureFlagHandler) {
+    return new S3DataStorageService(blobStore, bucketPrefix, defaultBucketName, featureFlagHandler);
+  }
 
-	@Bean
-	@ConditionalOnProperty(name = "datastore.type", havingValue = "s3")
-	public BlobStore blobStore(@Value("${datastore.s3.accessKey}") String accessKey, @Value("${datastore.s3.secretKey}") String secretKey,
-			@Value("${datastore.s3.region}") String region) {
-		Iterable<Module> modules = ImmutableSet.of(new CustomBucketToRegionModule(region));
+  /**
+   * Creates BlobStore bean, that works with AWS S3.
+   *
+   * @param accessKey accessKey to use
+   * @param secretKey secretKey to use
+   * @param region    AWS S3 region to use.
+   * @return {@link BlobStore}
+   */
+  @Bean
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "s3")
+  public BlobStore blobStore(@Value("${datastore.s3.accessKey}") String accessKey,
+      @Value("${datastore.s3.secretKey}") String secretKey,
+      @Value("${datastore.s3.region}") String region) {
+    Iterable<Module> modules = ImmutableSet.of(new CustomBucketToRegionModule(region));
 
-		BlobStoreContext blobStoreContext = ContextBuilder.newBuilder("aws-s3")
-				.modules(modules)
-				.credentials(accessKey, secretKey)
-				.buildView(BlobStoreContext.class);
+    BlobStoreContext blobStoreContext =
+        ContextBuilder.newBuilder("aws-s3").modules(modules).credentials(accessKey, secretKey)
+            .buildView(BlobStoreContext.class);
 
-		return blobStoreContext.getBlobStore();
-	}
+    return blobStoreContext.getBlobStore();
+  }
 
-	@Bean
-	@Primary
-	@ConditionalOnProperty(name = "datastore.type", havingValue = "s3")
-	public DataStorageService s3DataStore(@Autowired BlobStore blobStore, @Value("${datastore.s3.bucketPrefix}") String bucketPrefix,
-			@Value("${datastore.s3.defaultBucketName}") String defaultBucketName) {
-		return new S3DataStorageService(blobStore, bucketPrefix, defaultBucketName);
-	}
+  @Bean
+  @Primary
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "s3")
+  public DataStorageService s3DataStore(@Autowired BlobStore blobStore,
+      @Value("${datastore.s3.bucketPrefix}") String bucketPrefix,
+      @Value("${datastore.s3.defaultBucketName}") String defaultBucketName,
+      FeatureFlagHandler featureFlagHandler) {
+    return new S3DataStorageService(blobStore, bucketPrefix, defaultBucketName, featureFlagHandler);
+  }
 }

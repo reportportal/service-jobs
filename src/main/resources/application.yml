@@ -84,6 +84,12 @@ datastore:
     defaultBucketName: rp-bucket
     region: #{null}
   # could be one of [filesystem, s3, minio]
+  s3:
+    region: us-standard
+    accessKey:
+    secretKey:
+    bucketPrefix: prj-
+    defaultBucketName: rp-bucket
   type: minio
 
 
