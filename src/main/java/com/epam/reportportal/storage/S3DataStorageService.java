@@ -37,6 +37,14 @@ public class S3DataStorageService implements DataStorageService {
 
   private final FeatureFlagHandler featureFlagHandler;
 
+  /**
+   * Creates instance of {@link S3DataStorageService}.
+   *
+   * @param blobStore          {@link BlobStore}
+   * @param bucketPrefix       Prefix for bucket name
+   * @param defaultBucketName  Name for the default bucket(plugins, etc.)
+   * @param featureFlagHandler {@link FeatureFlagHandler}
+   */
   public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String defaultBucketName,
       FeatureFlagHandler featureFlagHandler) {
     this.blobStore = blobStore;
