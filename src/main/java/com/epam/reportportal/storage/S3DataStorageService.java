@@ -16,6 +16,7 @@
 
 package com.epam.reportportal.storage;
 
+import com.epam.reportportal.model.BlobNotFoundException;
 import com.epam.reportportal.utils.FeatureFlag;
 import com.epam.reportportal.utils.FeatureFlagHandler;
 import java.nio.file.Path;
@@ -25,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * S3 storage service
+ * S3 storage service.
  */
 public class S3DataStorageService implements DataStorageService {
 
@@ -78,7 +79,7 @@ public class S3DataStorageService implements DataStorageService {
       blobStore.removeBlob(bucket, objectName);
     } catch (Exception e) {
       LOGGER.error("Unable to delete file '{}'", filePath, e);
-      throw e;
+      throw new BlobNotFoundException(e);
     }
   }
 
