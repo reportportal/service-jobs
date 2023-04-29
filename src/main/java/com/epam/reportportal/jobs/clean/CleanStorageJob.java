@@ -30,6 +30,8 @@ public class CleanStorageJob extends BaseJob {
   private final DataStorageService storageService;
   private final int chunkSize;
 
+  private final int batchSize;
+
   /**
    * Initializes {@link CleanStorageJob}.
    *
@@ -38,10 +40,12 @@ public class CleanStorageJob extends BaseJob {
    * @param chunkSize      Size of elements deleted at once
    */
   public CleanStorageJob(JdbcTemplate jdbcTemplate, DataStorageService storageService,
-      @Value("${rp.environment.variable.clean.storage.chunkSize}") int chunkSize) {
+      @Value("${rp.environment.variable.clean.storage.chunkSize}") int chunkSize,
+      @Value("${rp.environment.variable.clean.storage.batchSize}") int batchSize) {
     super(jdbcTemplate);
     this.chunkSize = chunkSize;
     this.storageService = storageService;
+    this.batchSize = batchSize != 0 ? batchSize : chunkSize / 10;
   }
 
   /**
@@ -54,20 +58,24 @@ public class CleanStorageJob extends BaseJob {
     logStart();
     AtomicInteger counter = new AtomicInteger(0);
 
-    jdbcTemplate.query(SELECT_AND_DELETE_DATA_CHUNK_QUERY, rs -> {
-      try {
-        delete(rs.getString("file_id"), rs.getString("thumbnail_id"));
-        counter.incrementAndGet();
-        while (rs.next()) {
+    int batchNumber = 1;
+    while (batchNumber * batchSize <= chunkSize) {
+      jdbcTemplate.query(SELECT_AND_DELETE_DATA_CHUNK_QUERY, rs -> {
+        try {
           delete(rs.getString("file_id"), rs.getString("thumbnail_id"));
           counter.incrementAndGet();
+          while (rs.next()) {
+            delete(rs.getString("file_id"), rs.getString("thumbnail_id"));
+            counter.incrementAndGet();
+          }
+        } catch (BlobNotFoundException e) {
+          LOGGER.info("File {} is not found when executing clean storage job", e.getFileName());
+        } catch (Exception e) {
+          throw new RuntimeException(ROLLBACK_ERROR_MESSAGE, e);
         }
-      } catch (BlobNotFoundException e) {
-        LOGGER.info("File {} is not found when executing clean storage job", e.getFileName());
-      } catch (Exception e) {
-        throw new RuntimeException(ROLLBACK_ERROR_MESSAGE, e);
-      }
-    }, chunkSize);
+      }, batchSize);
+      batchNumber++;
+    }
 
     logFinish(counter.get());
   }
