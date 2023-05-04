@@ -16,9 +16,11 @@
 
 package com.epam.reportportal.storage;
 
+import java.util.List;
+
 /**
  * Storage service interface
  */
 public interface DataStorageService {
-    void delete(String filePath) throws Exception;
+    void deleteAll(List<String> paths) throws Exception;
 }

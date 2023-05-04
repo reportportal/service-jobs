@@ -21,9 +21,12 @@ import com.epam.reportportal.utils.FeatureFlag;
 import com.epam.reportportal.utils.FeatureFlagHandler;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.jclouds.blobstore.BlobStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
 
 /**
  * S3 storage service.
@@ -55,35 +58,56 @@ public class S3DataStorageService implements DataStorageService {
   }
 
   @Override
-  public void delete(String filePath) throws Exception {
-    Path targetPath = Paths.get(filePath);
-    int nameCount = targetPath.getNameCount();
-
-    String bucket;
-    String objectName;
-
-    if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-      bucket = defaultBucketName;
-      objectName = filePath;
-    } else {
-      if (nameCount > 1) {
-        bucket = bucketPrefix + retrievePath(targetPath, 0, 1);
-        objectName = retrievePath(targetPath, 1, nameCount);
-      } else {
-        bucket = defaultBucketName;
-        objectName = retrievePath(targetPath, 0, 1);
-      }
+  public void deleteAll(List<String> paths) throws Exception {
+    if (CollectionUtils.isEmpty(paths)) {
+      return;
     }
-
+    String bucketName = getBucketName(paths.get(0));
+    if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
+      paths = paths.stream().map(this::getObjectPath).collect(Collectors.toList());
+    }
     try {
-      blobStore.removeBlob(bucket, objectName);
+      blobStore.removeBlobs(bucketName, paths);
     } catch (Exception e) {
-      LOGGER.error("Unable to delete file '{}'", filePath, e);
+      LOGGER.error("Unable to delete files from {}", bucketName, e);
       throw new BlobNotFoundException(e);
     }
   }
 
   private String retrievePath(Path path, int beginIndex, int endIndex) {
     return String.valueOf(path.subpath(beginIndex, endIndex));
+  }
+
+  private String getBucketName(String filePath) {
+    Path targetPath = Paths.get(filePath);
+    int nameCount = targetPath.getNameCount();
+    String bucket;
+    if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
+      bucket = defaultBucketName;
+    } else {
+      if (nameCount > 1) {
+        bucket = bucketPrefix + retrievePath(targetPath, 0, 1);
+      } else {
+        bucket = defaultBucketName;
+      }
+    }
+    return bucket;
+  }
+
+  private String getObjectPath(String filePath) {
+    Path targetPath = Paths.get(filePath);
+    int nameCount = targetPath.getNameCount();
+
+    String objectName;
+    if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
+      objectName = filePath;
+    } else {
+      if (nameCount > 1) {
+        objectName = retrievePath(targetPath, 1, nameCount);
+      } else {
+        objectName = retrievePath(targetPath, 0, 1);
+      }
+    }
+    return objectName;
   }
 }
