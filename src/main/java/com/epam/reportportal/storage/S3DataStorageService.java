@@ -63,9 +63,7 @@ public class S3DataStorageService implements DataStorageService {
       return;
     }
     String bucketName = getBucketName(paths.get(0));
-    if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-      paths = paths.stream().map(this::getObjectPath).collect(Collectors.toList());
-    }
+    paths = paths.stream().map(this::getObjectPath).collect(Collectors.toList());
     try {
       blobStore.removeBlobs(bucketName, paths);
     } catch (Exception e) {

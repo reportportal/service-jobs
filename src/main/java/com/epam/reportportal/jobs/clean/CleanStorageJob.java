@@ -78,6 +78,10 @@ public class CleanStorageJob extends BaseJob {
         } while (rs.next());
       }, batchSize);
 
+      int attachmentsSize = thumbnails.size() + attachments.size();
+      if (attachmentsSize == 0){
+        break;
+      }
       try {
         storageService.deleteAll(
             thumbnails.stream().map(this::decode).collect(Collectors.toList()));
@@ -89,7 +93,6 @@ public class CleanStorageJob extends BaseJob {
         throw new RuntimeException(ROLLBACK_ERROR_MESSAGE, e);
       }
 
-      int attachmentsSize = thumbnails.size() + attachments.size();
       counter.addAndGet(attachmentsSize);
       LOGGER.info("Iteration {}, deleted {} attachments", batchNumber, attachmentsSize);
       batchNumber++;
