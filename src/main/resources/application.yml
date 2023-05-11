@@ -1,4 +1,6 @@
 rp:
+  feature:
+    flags:
   environment:
     variable:
       elements-counter:
