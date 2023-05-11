@@ -21,7 +21,10 @@ import com.epam.reportportal.utils.FeatureFlag;
 import com.epam.reportportal.utils.FeatureFlagHandler;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.jclouds.blobstore.BlobStore;
 import org.slf4j.Logger;
@@ -62,13 +65,26 @@ public class S3DataStorageService implements DataStorageService {
     if (CollectionUtils.isEmpty(paths)) {
       return;
     }
-    String bucketName = getBucketName(paths.get(0));
-    paths = paths.stream().map(this::getObjectPath).collect(Collectors.toList());
-    try {
-      blobStore.removeBlobs(bucketName, paths);
-    } catch (Exception e) {
-      LOGGER.error("Unable to delete files from {}", bucketName, e);
-      throw new BlobNotFoundException(e);
+    if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
+      removeFiles(defaultBucketName, paths);
+    } else {
+      Map<String, List<String>> bucketPathMap = new HashMap<>();
+      for (String path : paths) {
+        Path targetPath = Paths.get(path);
+        int nameCount = targetPath.getNameCount();
+        String bucket = retrievePath(targetPath, 0, 1);
+        String cutPath = retrievePath(targetPath, 1, nameCount);
+        if (bucketPathMap.containsKey(bucket)) {
+          bucketPathMap.get(bucket).add(cutPath);
+        } else {
+          List<String> bucketPaths = new ArrayList<>();
+          bucketPaths.add(cutPath);
+          bucketPathMap.put(bucket, bucketPaths);
+        }
+      }
+      for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()){
+        removeFiles(bucketPrefix + bucketPaths.getKey(), bucketPaths.getValue());
+      }
     }
   }
 
@@ -76,36 +92,12 @@ public class S3DataStorageService implements DataStorageService {
     return String.valueOf(path.subpath(beginIndex, endIndex));
   }
 
-  private String getBucketName(String filePath) {
-    Path targetPath = Paths.get(filePath);
-    int nameCount = targetPath.getNameCount();
-    String bucket;
-    if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-      bucket = defaultBucketName;
-    } else {
-      if (nameCount > 1) {
-        bucket = bucketPrefix + retrievePath(targetPath, 0, 1);
-      } else {
-        bucket = defaultBucketName;
-      }
+  private void removeFiles(String bucketName, List<String> paths) throws BlobNotFoundException {
+    try {
+      blobStore.removeBlobs(bucketName, paths);
+    } catch (Exception e) {
+      LOGGER.error("Unable to delete files from {}", bucketName, e);
+      throw new BlobNotFoundException(e);
     }
-    return bucket;
-  }
-
-  private String getObjectPath(String filePath) {
-    Path targetPath = Paths.get(filePath);
-    int nameCount = targetPath.getNameCount();
-
-    String objectName;
-    if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-      objectName = filePath;
-    } else {
-      if (nameCount > 1) {
-        objectName = retrievePath(targetPath, 1, nameCount);
-      } else {
-        objectName = retrievePath(targetPath, 0, 1);
-      }
-    }
-    return objectName;
   }
 }
