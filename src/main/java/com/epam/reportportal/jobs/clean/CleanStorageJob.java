@@ -79,7 +79,7 @@ public class CleanStorageJob extends BaseJob {
       }, batchSize);
 
       int attachmentsSize = thumbnails.size() + attachments.size();
-      if (attachmentsSize == 0){
+      if (attachmentsSize == 0) {
         break;
       }
       try {
