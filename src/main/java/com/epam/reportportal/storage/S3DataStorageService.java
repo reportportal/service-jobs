@@ -16,7 +16,6 @@
 
 package com.epam.reportportal.storage;
 
-import com.epam.reportportal.model.BlobNotFoundException;
 import com.epam.reportportal.utils.FeatureFlag;
 import com.epam.reportportal.utils.FeatureFlagHandler;
 import java.nio.file.Path;
@@ -25,7 +24,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.jclouds.blobstore.BlobStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +80,7 @@ public class S3DataStorageService implements DataStorageService {
           bucketPathMap.put(bucket, bucketPaths);
         }
       }
-      for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()){
+      for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
         removeFiles(bucketPrefix + bucketPaths.getKey(), bucketPaths.getValue());
       }
     }
@@ -92,12 +90,11 @@ public class S3DataStorageService implements DataStorageService {
     return String.valueOf(path.subpath(beginIndex, endIndex));
   }
 
-  private void removeFiles(String bucketName, List<String> paths) throws BlobNotFoundException {
+  private void removeFiles(String bucketName, List<String> paths) {
     try {
       blobStore.removeBlobs(bucketName, paths);
     } catch (Exception e) {
-      LOGGER.error("Unable to delete files from {}", bucketName, e);
-      throw new BlobNotFoundException(e);
+      LOGGER.warn("Exception {} is occurred during deleting file", e.getMessage());
     }
   }
 }
