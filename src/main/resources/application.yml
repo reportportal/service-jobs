@@ -1,4 +1,6 @@
 rp:
+  feature:
+    flags:
   environment:
     variable:
       elements-counter:
@@ -8,6 +10,7 @@ rp:
           ## 30 seconds
           cron: '*/30 * * * * *'
           chunkSize: 1000
+          batchSize: 100
         attachment:
           ## 2 minutes
           cron: '0 */2 * * * *'

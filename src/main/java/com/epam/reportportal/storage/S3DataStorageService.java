@@ -16,14 +16,18 @@
 
 package com.epam.reportportal.storage;
 
-import com.epam.reportportal.model.BlobNotFoundException;
 import com.epam.reportportal.utils.FeatureFlag;
 import com.epam.reportportal.utils.FeatureFlagHandler;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.jclouds.blobstore.BlobStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
 
 /**
  * S3 storage service.
@@ -55,35 +59,42 @@ public class S3DataStorageService implements DataStorageService {
   }
 
   @Override
-  public void delete(String filePath) throws Exception {
-    Path targetPath = Paths.get(filePath);
-    int nameCount = targetPath.getNameCount();
-
-    String bucket;
-    String objectName;
-
-    if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-      bucket = defaultBucketName;
-      objectName = filePath;
-    } else {
-      if (nameCount > 1) {
-        bucket = bucketPrefix + retrievePath(targetPath, 0, 1);
-        objectName = retrievePath(targetPath, 1, nameCount);
-      } else {
-        bucket = defaultBucketName;
-        objectName = retrievePath(targetPath, 0, 1);
-      }
+  public void deleteAll(List<String> paths) throws Exception {
+    if (CollectionUtils.isEmpty(paths)) {
+      return;
     }
-
-    try {
-      blobStore.removeBlob(bucket, objectName);
-    } catch (Exception e) {
-      LOGGER.error("Unable to delete file '{}'", filePath, e);
-      throw new BlobNotFoundException(e);
+    if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
+      removeFiles(defaultBucketName, paths);
+    } else {
+      Map<String, List<String>> bucketPathMap = new HashMap<>();
+      for (String path : paths) {
+        Path targetPath = Paths.get(path);
+        int nameCount = targetPath.getNameCount();
+        String bucket = retrievePath(targetPath, 0, 1);
+        String cutPath = retrievePath(targetPath, 1, nameCount);
+        if (bucketPathMap.containsKey(bucket)) {
+          bucketPathMap.get(bucket).add(cutPath);
+        } else {
+          List<String> bucketPaths = new ArrayList<>();
+          bucketPaths.add(cutPath);
+          bucketPathMap.put(bucket, bucketPaths);
+        }
+      }
+      for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
+        removeFiles(bucketPrefix + bucketPaths.getKey(), bucketPaths.getValue());
+      }
     }
   }
 
   private String retrievePath(Path path, int beginIndex, int endIndex) {
     return String.valueOf(path.subpath(beginIndex, endIndex));
+  }
+
+  private void removeFiles(String bucketName, List<String> paths) {
+    try {
+      blobStore.removeBlobs(bucketName, paths);
+    } catch (Exception e) {
+      LOGGER.warn("Exception {} is occurred during deleting file", e.getMessage());
+    }
   }
 }
