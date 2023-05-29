@@ -136,7 +136,7 @@ public class DataStorageConfig {
   @Bean
   @ConditionalOnProperty(name = "datastore.type", havingValue = "filesystem")
   public DataStorageService localDataStore(
-      @Value("${datastore.default.path:/data/store}") String storagePath) {
+      @Value("${datastore.path:/data/store}") String storagePath) {
     return new LocalDataStorageService(storagePath);
   }
 
@@ -150,9 +150,9 @@ public class DataStorageConfig {
    */
   @Bean
   @ConditionalOnProperty(name = "datastore.type", havingValue = "minio")
-  public BlobStore minioBlobStore(@Value("${datastore.minio.accessKey}") String accessKey,
-      @Value("${datastore.minio.secretKey}") String secretKey,
-      @Value("${datastore.minio.endpoint}") String endpoint) {
+  public BlobStore minioBlobStore(@Value("${datastore.accessKey}") String accessKey,
+      @Value("${datastore.secretKey}") String secretKey,
+      @Value("${datastore.endpoint}") String endpoint) {
 
     BlobStoreContext blobStoreContext =
         ContextBuilder.newBuilder("s3").endpoint(endpoint).credentials(accessKey, secretKey)
@@ -173,8 +173,8 @@ public class DataStorageConfig {
   @Bean
   @ConditionalOnProperty(name = "datastore.type", havingValue = "minio")
   public DataStorageService minioDataStore(@Autowired BlobStore blobStore,
-      @Value("${datastore.minio.bucketPrefix}") String bucketPrefix,
-      @Value("${datastore.minio.defaultBucketName}") String defaultBucketName,
+      @Value("${datastore.bucketPrefix}") String bucketPrefix,
+      @Value("${datastore.defaultBucketName}") String defaultBucketName,
       FeatureFlagHandler featureFlagHandler) {
     return new S3DataStorageService(blobStore, bucketPrefix, defaultBucketName, featureFlagHandler);
   }
@@ -189,9 +189,9 @@ public class DataStorageConfig {
    */
   @Bean
   @ConditionalOnProperty(name = "datastore.type", havingValue = "s3")
-  public BlobStore blobStore(@Value("${datastore.s3.accessKey}") String accessKey,
-      @Value("${datastore.s3.secretKey}") String secretKey,
-      @Value("${datastore.s3.region}") String region) {
+  public BlobStore blobStore(@Value("${datastore.accessKey}") String accessKey,
+      @Value("${datastore.secretKey}") String secretKey,
+      @Value("${datastore.region}") String region) {
     Iterable<Module> modules = ImmutableSet.of(new CustomBucketToRegionModule(region));
 
     BlobStoreContext blobStoreContext =
@@ -205,8 +205,8 @@ public class DataStorageConfig {
   @Primary
   @ConditionalOnProperty(name = "datastore.type", havingValue = "s3")
   public DataStorageService s3DataStore(@Autowired BlobStore blobStore,
-      @Value("${datastore.s3.bucketPrefix}") String bucketPrefix,
-      @Value("${datastore.s3.defaultBucketName}") String defaultBucketName,
+      @Value("${datastore.bucketPrefix}") String bucketPrefix,
+      @Value("${datastore.defaultBucketName}") String defaultBucketName,
       FeatureFlagHandler featureFlagHandler) {
     return new S3DataStorageService(blobStore, bucketPrefix, defaultBucketName, featureFlagHandler);
   }

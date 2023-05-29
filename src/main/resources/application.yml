@@ -79,20 +79,12 @@ rp:
 
 datastore:
   path: /data/storage
-  minio:
-    endpoint: http://minio:9000
-    accessKey:
-    secretKey:
-    bucketPrefix: prj-
-    defaultBucketName: rp-bucket
-    region: #{null}
-  # could be one of [filesystem, s3, minio]
-  s3:
-    region: us-standard
-    accessKey:
-    secretKey:
-    bucketPrefix: prj-
-    defaultBucketName: rp-bucket
   type: minio
+  endpoint: http://minio:9000
+  accessKey:
+  secretKey:
+  bucketPrefix: prj-
+  defaultBucketName: rp-bucket
+  region: #{null}
 
 
