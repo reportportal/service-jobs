@@ -9,7 +9,7 @@ project.ext {
     releaseMode = project.hasProperty("releaseMode")
 }
 
-def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/' + (releaseMode ? getProperty('scripts.version') : '5.5.0')
+def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/' + (releaseMode ? getProperty('scripts.version') : 'develop')
 
 apply from: "$scriptsUrl/build-docker.gradle"
 apply from: "$scriptsUrl/build-commons.gradle"
