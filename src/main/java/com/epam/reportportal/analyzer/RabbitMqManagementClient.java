@@ -17,7 +17,6 @@
 package com.epam.reportportal.analyzer;
 
 import com.rabbitmq.http.client.domain.ExchangeInfo;
-
 import java.util.List;
 
 /**
@@ -25,6 +24,6 @@ import java.util.List;
  */
 public interface RabbitMqManagementClient {
 
-	List<ExchangeInfo> getAnalyzerExchangesInfo();
+  List<ExchangeInfo> getAnalyzerExchangesInfo();
 
 }
