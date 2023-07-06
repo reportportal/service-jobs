@@ -66,6 +66,8 @@ public class S3DataStorageService implements DataStorageService {
     if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
       removeFiles(defaultBucketName, paths);
     } else {
+      LOGGER.info("File_Id of first element : {}", paths.get(0));
+      LOGGER.info("File_Id of last element : {}", paths.get(paths.size() - 1));
       Map<String, List<String>> bucketPathMap = new HashMap<>();
       for (String path : paths) {
         Path targetPath = Paths.get(path);
@@ -81,6 +83,7 @@ public class S3DataStorageService implements DataStorageService {
         }
       }
       for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
+        LOGGER.info("Trying to delete project : {}", bucketPrefix + bucketPaths.getKey());
         removeFiles(bucketPrefix + bucketPaths.getKey(), bucketPaths.getValue());
       }
     }

@@ -62,9 +62,9 @@ public class CleanStorageJob extends BaseJob {
     AtomicInteger counter = new AtomicInteger(0);
 
     int batchNumber = 1;
+    List<String> attachments = new ArrayList<>();
+    List<String> thumbnails = new ArrayList<>();
     while (batchNumber * batchSize <= chunkSize) {
-      List<String> attachments = new ArrayList<>();
-      List<String> thumbnails = new ArrayList<>();
       jdbcTemplate.query(SELECT_AND_DELETE_DATA_CHUNK_QUERY, rs -> {
         do {
           String attachment = rs.getString("file_id");
@@ -87,6 +87,8 @@ public class CleanStorageJob extends BaseJob {
             thumbnails.stream().map(this::decode).collect(Collectors.toList()));
         storageService.deleteAll(
             attachments.stream().map(this::decode).collect(Collectors.toList()));
+        attachments.clear();
+        thumbnails.clear();
       } catch (BlobNotFoundException e) {
         LOGGER.info("File is not found when executing clean storage job");
       } catch (Exception e) {
