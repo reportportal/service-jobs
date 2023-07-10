@@ -16,6 +16,7 @@
 
 package com.epam.reportportal.storage;
 
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,21 +29,23 @@ import java.nio.file.Paths;
  */
 public class LocalDataStorageService implements DataStorageService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LocalDataStorageService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalDataStorageService.class);
 
-    private final String storageRootPath;
+  private final String storageRootPath;
 
-    public LocalDataStorageService(String storageRootPath) {
-        this.storageRootPath = storageRootPath;
+  public LocalDataStorageService(String storageRootPath) {
+    this.storageRootPath = storageRootPath;
+  }
+
+  @Override
+  public void deleteAll(List<String> paths) throws IOException {
+    for (String path : paths) {
+      try {
+        Files.deleteIfExists(Paths.get(storageRootPath, path));
+      } catch (IOException e) {
+        LOGGER.error("Unable to delete file '{}'", path, e);
+        throw e;
+      }
     }
-
-    @Override
-    public void delete(String filePath) throws IOException {
-        try {
-            Files.deleteIfExists(Paths.get(storageRootPath, filePath));
-        } catch (IOException e) {
-            LOGGER.error("Unable to delete file '{}'", filePath, e);
-            throw e;
-        }
-    }
+  }
 }
