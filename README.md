@@ -1,2 +1,2 @@
 # service-jobs
-ReportPortal cron jobs
+ReportPortal cron jobs service
