@@ -8,12 +8,17 @@ rp:
       clean:
         storage:
           ## 30 seconds
-          cron: '*/30 * * * * *'
+          cron: '0 0 */24 * * *'
           chunkSize: 1000
           batchSize: 100
-        attachment:
+        expired:
           ## 2 minutes
           cron: '0 */2 * * * *'
+          ## Retentions period in days
+          retentionPeriod: 1
+        attachment:
+          ## 2 minutes
+          cron: '0 0 */24 * * *'
         log:
           ## 5 minutes
           cron: '0 */5 * * * *'
