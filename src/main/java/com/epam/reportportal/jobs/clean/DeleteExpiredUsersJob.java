@@ -28,6 +28,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.jclouds.blobstore.BlobStore;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -101,6 +102,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
   }
 
   @Scheduled(cron = "${rp.environment.variable.clean.expiredUser.cron}")
+  @SchedulerLock(name = "cleanStorage", lockAtMostFor = "24h")
   public void execute() {
     List<UserProject> userProjects = findUsersAndPersonalProjects();
     userRepository.deleteAllByIdInBatch(getUserIds(userProjects));
