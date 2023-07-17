@@ -37,6 +37,7 @@ public class ExecutionTimeAspect {
   public Object executionTime(ProceedingJoinPoint point, SchedulerLock annotation) throws Throwable {
     String name = annotation.name();
     long startTime = System.currentTimeMillis();
+    LOGGER.info("Job {} has been started.", name);
     Object object = point.proceed();
     long endtime = System.currentTimeMillis();
 
