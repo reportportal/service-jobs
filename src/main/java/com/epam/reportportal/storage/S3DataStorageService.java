@@ -38,6 +38,7 @@ public class S3DataStorageService implements DataStorageService {
 
   private final BlobStore blobStore;
   private final String bucketPrefix;
+  private final String bucketPostfix;
   private final String defaultBucketName;
 
   private final FeatureFlagHandler featureFlagHandler;
@@ -47,13 +48,15 @@ public class S3DataStorageService implements DataStorageService {
    *
    * @param blobStore          {@link BlobStore}
    * @param bucketPrefix       Prefix for bucket name
+   * @param bucketPostfix      Postfix for bucket name
    * @param defaultBucketName  Name for the default bucket(plugins, etc.)
    * @param featureFlagHandler {@link FeatureFlagHandler}
    */
-  public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String defaultBucketName,
-      FeatureFlagHandler featureFlagHandler) {
+  public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String bucketPostfix,
+      String defaultBucketName, FeatureFlagHandler featureFlagHandler) {
     this.blobStore = blobStore;
     this.bucketPrefix = bucketPrefix;
+    this.bucketPostfix = bucketPostfix;
     this.defaultBucketName = defaultBucketName;
     this.featureFlagHandler = featureFlagHandler;
   }
@@ -81,7 +84,7 @@ public class S3DataStorageService implements DataStorageService {
         }
       }
       for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
-        removeFiles(bucketPrefix + bucketPaths.getKey(), bucketPaths.getValue());
+        removeFiles(bucketPrefix + bucketPaths.getKey() + bucketPostfix, bucketPaths.getValue());
       }
     }
   }

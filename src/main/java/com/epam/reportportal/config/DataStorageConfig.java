@@ -174,9 +174,11 @@ public class DataStorageConfig {
   @ConditionalOnProperty(name = "datastore.type", havingValue = "minio")
   public DataStorageService minioDataStore(@Autowired BlobStore blobStore,
       @Value("${datastore.bucketPrefix}") String bucketPrefix,
+      @Value("${datastore.bucketPostfix}") String bucketPostfix,
       @Value("${datastore.defaultBucketName}") String defaultBucketName,
       FeatureFlagHandler featureFlagHandler) {
-    return new S3DataStorageService(blobStore, bucketPrefix, defaultBucketName, featureFlagHandler);
+    return new S3DataStorageService(blobStore, bucketPrefix, bucketPostfix, defaultBucketName,
+        featureFlagHandler);
   }
 
   /**
@@ -206,8 +208,10 @@ public class DataStorageConfig {
   @ConditionalOnProperty(name = "datastore.type", havingValue = "s3")
   public DataStorageService s3DataStore(@Autowired BlobStore blobStore,
       @Value("${datastore.bucketPrefix}") String bucketPrefix,
+      @Value("${datastore.bucketPostfix}") String bucketPostfix,
       @Value("${datastore.defaultBucketName}") String defaultBucketName,
       FeatureFlagHandler featureFlagHandler) {
-    return new S3DataStorageService(blobStore, bucketPrefix, defaultBucketName, featureFlagHandler);
+    return new S3DataStorageService(blobStore, bucketPrefix, bucketPostfix, defaultBucketName,
+        featureFlagHandler);
   }
 }
