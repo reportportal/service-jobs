@@ -112,7 +112,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
     deleteUsersByIds(userIds);
     getProjectIds(userProjects).forEach(this::deleteProjectAssociatedData);
     deleteProjectsByIds(getProjectIds(userProjects));
-    LOGGER.info("{} - users was deleted due retention policy", userIds.size());
+    LOGGER.info("{} - users was deleted due to retention policy", userIds.size());
   }
 
   private List<UserProject> findUsersAndPersonalProjects() {
