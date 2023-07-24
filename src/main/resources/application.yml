@@ -84,6 +84,7 @@ datastore:
   accessKey:
   secretKey:
   bucketPrefix: prj-
+  bucketPostfix:
   defaultBucketName: rp-bucket
   region: #{null}
 
