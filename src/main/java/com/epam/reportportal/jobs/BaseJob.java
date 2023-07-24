@@ -11,16 +11,4 @@ public abstract class BaseJob {
     public BaseJob(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
-
-    protected void logStart() {
-        LOGGER.info("Job {} has been started.", this.getClass().getSimpleName());
-    }
-
-    protected void logFinish(Object result) {
-        LOGGER.info("Job {} has been finished. Result {}", this.getClass().getSimpleName(), result);
-    }
-
-    protected void logFinish() {
-        logFinish(null);
-    }
 }

@@ -61,7 +61,6 @@ public class CleanLaunchJob extends BaseCleanJob {
 	}
 
 	private void removeLaunches() {
-		logStart();
 		AtomicInteger counter = new AtomicInteger(0);
 		getProjectsWithAttribute(KEEP_LAUNCHES).forEach((projectId, duration) -> {
 			final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
@@ -84,7 +83,6 @@ public class CleanLaunchJob extends BaseCleanJob {
 				}
 			}
 		});
-		logFinish(counter.get());
 	}
 
 	private void deleteLogsFromElasticsearchByLaunchIdsAndProjectId(List<Long> launchIds, Long projectId) {

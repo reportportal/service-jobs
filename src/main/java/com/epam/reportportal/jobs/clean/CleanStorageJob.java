@@ -58,7 +58,6 @@ public class CleanStorageJob extends BaseJob {
   @SchedulerLock(name = "cleanStorage", lockAtMostFor = "24h")
   @Transactional
   public void execute() {
-    logStart();
     AtomicInteger counter = new AtomicInteger(0);
 
     int batchNumber = 1;
@@ -97,8 +96,6 @@ public class CleanStorageJob extends BaseJob {
       LOGGER.info("Iteration {}, deleted {} attachments", batchNumber, attachmentsSize);
       batchNumber++;
     }
-
-    logFinish(counter.get());
   }
 
   private String decode(String data) {
