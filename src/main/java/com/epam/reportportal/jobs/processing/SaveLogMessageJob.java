@@ -15,7 +15,7 @@ import java.util.Objects;
  * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
 @Service
-@ConditionalOnProperty(prefix = "rp.elasticsearch", name = "host")
+@ConditionalOnProperty(prefix = "rp.es", name = "host")
 public class SaveLogMessageJob {
     public static final String LOG_MESSAGE_SAVING_QUEUE_NAME = "log_message_saving";
     private final LogProcessing logProcessing;

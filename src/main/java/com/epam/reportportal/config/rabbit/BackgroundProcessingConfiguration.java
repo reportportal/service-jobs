@@ -11,10 +11,11 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Rabbitmq background queue configuration.
+ *
  * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
 @Configuration
-@ConditionalOnProperty(prefix = "rp.elasticsearch", name = "host")
+@ConditionalOnProperty(prefix = "rp.es", name = "host")
 public class BackgroundProcessingConfiguration {
     public static final String LOG_MESSAGE_SAVING_QUEUE_NAME = "log_message_saving";
     public static final String LOG_MESSAGE_SAVING_ROUTING_KEY = "log_message_saving";
