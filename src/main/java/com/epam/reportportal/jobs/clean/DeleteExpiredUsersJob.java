@@ -16,18 +16,27 @@
 
 package com.epam.reportportal.jobs.clean;
 
+import static com.epam.reportportal.config.rabbit.InternalConfiguration.EXCHANGE_NOTIFICATION;
+import static com.epam.reportportal.config.rabbit.InternalConfiguration.QUEUE_EMAIL;
+
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import com.epam.reportportal.jobs.BaseJob;
+import com.epam.reportportal.model.EmailNotificationRequest;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.jclouds.blobstore.BlobStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -48,9 +57,10 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
+  public static final String USER_DELETION_TEMPLATE = "userDeletionNotification";
   private static final String RETENTION_PERIOD = "retentionPeriod";
 
-  private static final String SELECT_EXPIRED_USERS = "SELECT u.id AS user_id, p.id AS project_id "
+  private static final String SELECT_EXPIRED_USERS = "SELECT u.id AS user_id, p.id AS project_id, u.email as user_email "
       + "FROM users u "
       + "LEFT JOIN api_keys ak ON u.id = ak.user_id "
       + "LEFT JOIN project p ON u.login || '_personal' = p.name AND p.project_type = 'PERSONAL' "
@@ -91,17 +101,21 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private final IndexerServiceClient indexerServiceClient;
 
+  private final RabbitTemplate rabbitTemplate;
+
   @Value("${datastore.bucketPrefix}")
   private String bucketPrefix;
 
   @Autowired
   public DeleteExpiredUsersJob(JdbcTemplate jdbcTemplate,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-      BlobStore blobStore, IndexerServiceClient indexerServiceClient) {
+      BlobStore blobStore, IndexerServiceClient indexerServiceClient,
+      @Qualifier("rabbitTemplate") RabbitTemplate rabbitTemplate) {
     super(jdbcTemplate);
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     this.blobStore = blobStore;
     this.indexerServiceClient = indexerServiceClient;
+    this.rabbitTemplate = rabbitTemplate;
   }
 
   @Override
@@ -113,6 +127,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
     deleteUsersByIds(userIds);
     getProjectIds(userProjects).forEach(this::deleteProjectAssociatedData);
     deleteProjectsByIds(getProjectIds(userProjects));
+    sendNotificationEmail(getUserEmails(userProjects));
     LOGGER.info("{} - users was deleted due to retention policy", userIds.size());
   }
 
@@ -175,19 +190,32 @@ public class DeleteExpiredUsersJob extends BaseJob {
     return LocalDateTime.now().minusDays(retentionPeriod).toInstant(ZoneOffset.UTC).toEpochMilli();
   }
 
-  public List<Long> getUserIds(List<UserProject> userProjects) {
+  private List<Long> getUserIds(List<UserProject> userProjects) {
     return userProjects.stream().map(UserProject::getUserId).collect(Collectors.toList());
   }
 
-  public List<Long> getProjectIds(List<UserProject> userProjects) {
+  private List<String> getUserEmails(List<UserProject> userProjects) {
+    return userProjects.stream().map(UserProject::getEmail).collect(Collectors.toList());
+  }
+
+  private List<Long> getProjectIds(List<UserProject> userProjects) {
     return userProjects.stream().filter(Objects::nonNull).map(UserProject::getProjectId)
         .collect(Collectors.toList());
+  }
+
+  private void sendNotificationEmail(List<String> recipients) {
+    for (String recipient: recipients) {
+      EmailNotificationRequest notification =
+          new EmailNotificationRequest(recipient, USER_DELETION_TEMPLATE);
+      rabbitTemplate.convertAndSend(EXCHANGE_NOTIFICATION, QUEUE_EMAIL, notification);
+    }
   }
 
   private static class UserProject {
 
     private long userId;
     private long projectId;
+    private String email;
 
     public long getUserId() {
       return userId;
@@ -195,6 +223,14 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
     public void setUserId(long userId) {
       this.userId = userId;
+    }
+
+    public String getEmail() {
+      return email;
+    }
+
+    public void setEmail(String email) {
+      this.email = email;
     }
 
     public long getProjectId() {

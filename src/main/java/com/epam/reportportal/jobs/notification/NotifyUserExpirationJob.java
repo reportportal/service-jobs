@@ -16,7 +16,11 @@
 
 package com.epam.reportportal.jobs.notification;
 
+import static com.epam.reportportal.config.rabbit.InternalConfiguration.EXCHANGE_NOTIFICATION;
+import static com.epam.reportportal.config.rabbit.InternalConfiguration.QUEUE_EMAIL;
+
 import com.epam.reportportal.jobs.BaseJob;
+import com.epam.reportportal.model.EmailNotificationRequest;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -38,10 +42,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class NotifyUserExpirationJob extends BaseJob {
 
-  public static final String EMAIL = "email";
-  public final String INACTIVITY_PERIOD = "inactivityPeriod";
-  public final String REMAINING_TIME = "remainingTime";
-  public final String DEADLINE_DATE = "deadlineDate";
+  private static final String EMAIL = "email";
+  private static final String USER_EXPIRATION_TEMPLATE = "userExpirationNotification";
+  private static final String DAYS = " days";
+  private final String INACTIVITY_PERIOD = "inactivityPeriod";
+  private final String REMAINING_TIME = "remainingTime";
+  private final String DEADLINE_DATE = "deadlineDate";
 
   private final String SELECT_USERS_FOR_NOTIFY = "WITH user_last_action AS ( "
       + "SELECT "
@@ -90,7 +96,7 @@ public class NotifyUserExpirationJob extends BaseJob {
   public void execute() {
     List<EmailNotificationRequest> notifications = getUsersForNotify();
     notifications.forEach(
-        notification -> rabbitTemplate.convertAndSend("notification", "notification.email",
+        notification -> rabbitTemplate.convertAndSend(EXCHANGE_NOTIFICATION, QUEUE_EMAIL,
             notification));
   }
 
@@ -102,7 +108,7 @@ public class NotifyUserExpirationJob extends BaseJob {
     } else if (remainingTime == 60) {
       return "2 months";
     } else {
-      return "";
+      return remainingTime + DAYS;
     }
   }
 
@@ -111,46 +117,15 @@ public class NotifyUserExpirationJob extends BaseJob {
     parameters.addValue(RETENTION_PERIOD, retentionPeriod);
     return namedParameterJdbcTemplate.query(
         SELECT_USERS_FOR_NOTIFY, parameters, (rs, rowNum) -> {
-          EmailNotificationRequest emailNotificationRequest = new EmailNotificationRequest();
-          emailNotificationRequest.setRecipient(rs.getString(EMAIL));
+          EmailNotificationRequest emailNotificationRequest =
+              new EmailNotificationRequest(rs.getString(EMAIL), USER_EXPIRATION_TEMPLATE);
           Map<String, Object> params = new HashMap<>();
-          params.put(INACTIVITY_PERIOD, rs.getLong(INACTIVITY_PERIOD) + " days");
+          params.put(INACTIVITY_PERIOD, rs.getLong(INACTIVITY_PERIOD) + DAYS);
           params.put(REMAINING_TIME, getRemainingTime(rs.getLong(REMAINING_TIME)));
           params.put(DEADLINE_DATE,
               String.valueOf(LocalDate.now().plusDays(rs.getLong(REMAINING_TIME))));
           emailNotificationRequest.setParams(params);
           return emailNotificationRequest;
         });
-  }
-
-  public static class EmailNotificationRequest {
-
-    private String recipient;
-
-    private Map<String, Object> params;
-
-    public String getRecipient() {
-      return recipient;
-    }
-
-    public void setRecipient(String recipient) {
-      this.recipient = recipient;
-    }
-
-    public Map<String, Object> getParams() {
-      return params;
-    }
-
-    public void setParams(Map<String, Object> params) {
-      this.params = params;
-    }
-
-    @Override
-    public String toString() {
-      return "EmailNotificationRequest{" +
-          "recipient='" + recipient + '\'' +
-          ", params=" + params +
-          '}';
-    }
   }
 }
