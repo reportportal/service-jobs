@@ -45,6 +45,7 @@ public class CleanLogJob extends BaseCleanJob {
 		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
 	}
 
+	@Override
 	@Scheduled(cron = "${rp.environment.variable.clean.log.cron}")
 	@SchedulerLock(name = "cleanLog", lockAtMostFor = "24h")
 	public void execute() {

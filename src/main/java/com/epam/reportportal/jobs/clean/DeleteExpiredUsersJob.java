@@ -104,6 +104,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
     this.indexerServiceClient = indexerServiceClient;
   }
 
+  @Override
   @Scheduled(cron = "${rp.environment.variable.clean.expiredUser.cron}")
   @SchedulerLock(name = "deleteExpiredUsers", lockAtMostFor = "24h")
   public void execute() {

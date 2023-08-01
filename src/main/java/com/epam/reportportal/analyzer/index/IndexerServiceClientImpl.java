@@ -46,7 +46,7 @@ public class IndexerServiceClientImpl implements IndexerServiceClient {
 
 	@Autowired
 	public IndexerServiceClientImpl(RabbitMqManagementClient rabbitMqManagementClient,
-			@Qualifier("analyzerRabbitTemplate") RabbitTemplate rabbitTemplate) {
+			@Qualifier("rabbitTemplate") RabbitTemplate rabbitTemplate) {
 		this.rabbitMqManagementClient = rabbitMqManagementClient;
 		this.rabbitTemplate = rabbitTemplate;
 	}

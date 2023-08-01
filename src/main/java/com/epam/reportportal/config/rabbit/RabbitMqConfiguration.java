@@ -16,12 +16,16 @@
 
 package com.epam.reportportal.config.rabbit;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
@@ -35,10 +39,17 @@ import java.net.URI;
  */
 @EnableRabbit
 @Configuration
-public class ProcessingRabbitMqConfiguration {
+public class RabbitMqConfiguration {
 
-	@Bean(name = "processingConnectionFactory")
-	public ConnectionFactory processingConnectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
+	private final ObjectMapper objectMapper;
+
+	@Autowired
+	public RabbitMqConfiguration(ObjectMapper objectMapper) {
+		this.objectMapper = objectMapper;
+	}
+
+	@Bean(name = "connectionFactory")
+	public ConnectionFactory connectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
 			@Value("${rp.amqp.base-vhost}") String virtualHost) {
 		CachingConnectionFactory factory = new CachingConnectionFactory(addresses);
 		factory.setVirtualHost(virtualHost);
@@ -46,8 +57,8 @@ public class ProcessingRabbitMqConfiguration {
 	}
 
 	@Bean
-	public SimpleRabbitListenerContainerFactory processingRabbitListenerContainerFactory(
-			@Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter,
+	public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+			@Qualifier("connectionFactory") ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter,
 			@Value("${rp.amqp.maxLogConsumer}") int maxLogConsumer) {
 		SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
 		factory.setConnectionFactory(connectionFactory);
@@ -57,15 +68,24 @@ public class ProcessingRabbitMqConfiguration {
 	}
 
 	@Bean
-	public RabbitAdmin processingRabbitAdmin(@Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory) {
+	public RabbitAdmin rabbitAdmin(@Qualifier("connectionFactory") ConnectionFactory connectionFactory) {
 		return new RabbitAdmin(connectionFactory);
 	}
 
 	@Bean
 	SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-			SimpleRabbitListenerContainerFactoryConfigurer configurer, @Qualifier("processingConnectionFactory") ConnectionFactory connectionFactory) {
+			SimpleRabbitListenerContainerFactoryConfigurer configurer, @Qualifier("connectionFactory") ConnectionFactory connectionFactory) {
 		SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
 		configurer.configure(factory, connectionFactory);
 		return factory;
+	}
+
+	@Bean(name = "rabbitTemplate")
+	public RabbitTemplate rabbitTemplate(@Autowired @Qualifier("connectionFactory") ConnectionFactory connectionFactory,
+			@Value("${rp.amqp.reply-timeout}") long replyTimeout) {
+		RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+		rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter(objectMapper));
+		rabbitTemplate.setReplyTimeout(replyTimeout);
+		return rabbitTemplate;
 	}
 }

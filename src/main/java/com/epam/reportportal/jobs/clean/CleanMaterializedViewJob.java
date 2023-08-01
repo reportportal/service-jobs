@@ -51,6 +51,7 @@ public class CleanMaterializedViewJob extends BaseJob {
 		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
 	}
 
+	@Override
 	@Scheduled(cron = "${rp.environment.variable.clean.view.cron}")
 	@SchedulerLock(name = "cleanMaterializedView", lockAtMostFor = "24h")
 	public void execute() {
