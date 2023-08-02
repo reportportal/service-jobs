@@ -11,4 +11,6 @@ public abstract class BaseJob {
     public BaseJob(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
+
+    public abstract void execute();
 }

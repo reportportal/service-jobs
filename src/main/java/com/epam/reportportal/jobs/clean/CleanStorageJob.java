@@ -54,6 +54,7 @@ public class CleanStorageJob extends BaseJob {
   /**
    * Deletes attachments, which are set to be deleted.
    */
+  @Override
   @Scheduled(cron = "${rp.environment.variable.clean.storage.cron}")
   @SchedulerLock(name = "cleanStorage", lockAtMostFor = "24h")
   @Transactional
