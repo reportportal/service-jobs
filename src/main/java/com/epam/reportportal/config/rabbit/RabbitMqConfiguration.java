@@ -17,6 +17,7 @@
 package com.epam.reportportal.config.rabbit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
@@ -32,7 +33,6 @@ import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainer
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.net.URI;
 
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
@@ -41,51 +41,55 @@ import java.net.URI;
 @Configuration
 public class RabbitMqConfiguration {
 
-	private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper;
 
-	@Autowired
-	public RabbitMqConfiguration(ObjectMapper objectMapper) {
-		this.objectMapper = objectMapper;
-	}
+  @Autowired
+  public RabbitMqConfiguration(ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
+  }
 
-	@Bean(name = "connectionFactory")
-	public ConnectionFactory connectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
-			@Value("${rp.amqp.base-vhost}") String virtualHost) {
-		CachingConnectionFactory factory = new CachingConnectionFactory(addresses);
-		factory.setVirtualHost(virtualHost);
-		return factory;
-	}
+  @Bean(name = "connectionFactory")
+  public ConnectionFactory connectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
+      @Value("${rp.amqp.base-vhost}") String virtualHost) {
+    CachingConnectionFactory factory = new CachingConnectionFactory(addresses);
+    factory.setVirtualHost(virtualHost);
+    return factory;
+  }
 
-	@Bean
-	public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-			@Qualifier("connectionFactory") ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter,
-			@Value("${rp.amqp.maxLogConsumer}") int maxLogConsumer) {
-		SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-		factory.setConnectionFactory(connectionFactory);
-		factory.setMaxConcurrentConsumers(maxLogConsumer);
-		factory.setMessageConverter(jsonMessageConverter);
-		return factory;
-	}
+  @Bean
+  public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+      @Qualifier("connectionFactory") ConnectionFactory connectionFactory,
+      MessageConverter jsonMessageConverter,
+      @Value("${rp.amqp.maxLogConsumer}") int maxLogConsumer) {
+    SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+    factory.setConnectionFactory(connectionFactory);
+    factory.setMaxConcurrentConsumers(maxLogConsumer);
+    factory.setMessageConverter(jsonMessageConverter);
+    return factory;
+  }
 
-	@Bean
-	public RabbitAdmin rabbitAdmin(@Qualifier("connectionFactory") ConnectionFactory connectionFactory) {
-		return new RabbitAdmin(connectionFactory);
-	}
+  @Bean
+  public RabbitAdmin rabbitAdmin(
+      @Qualifier("connectionFactory") ConnectionFactory connectionFactory) {
+    return new RabbitAdmin(connectionFactory);
+  }
 
-	@Bean
-	SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-			SimpleRabbitListenerContainerFactoryConfigurer configurer, @Qualifier("connectionFactory") ConnectionFactory connectionFactory) {
-		SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-		configurer.configure(factory, connectionFactory);
-		return factory;
-	}
+  @Bean
+  SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+      SimpleRabbitListenerContainerFactoryConfigurer configurer,
+      @Qualifier("connectionFactory") ConnectionFactory connectionFactory) {
+    SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+    configurer.configure(factory, connectionFactory);
+    return factory;
+  }
 
-	@Bean(name = "rabbitTemplate")
-	public RabbitTemplate rabbitTemplate(@Autowired @Qualifier("connectionFactory") ConnectionFactory connectionFactory,
-			@Value("${rp.amqp.reply-timeout}") long replyTimeout) {
-		RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-		rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter(objectMapper));
-		rabbitTemplate.setReplyTimeout(replyTimeout);
-		return rabbitTemplate;
-	}
+  @Bean(name = "rabbitTemplate")
+  public RabbitTemplate rabbitTemplate(
+      @Autowired @Qualifier("connectionFactory") ConnectionFactory connectionFactory,
+      @Value("${rp.amqp.reply-timeout}") long replyTimeout) {
+    RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+    rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter(objectMapper));
+    rabbitTemplate.setReplyTimeout(replyTimeout);
+    return rabbitTemplate;
+  }
 }

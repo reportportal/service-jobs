@@ -37,6 +37,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
+ * Notify users of oncoming deletion according to retention policy.
+ *
  * @author Andrei Piankouski
  */
 @Service
@@ -45,11 +47,11 @@ public class NotifyUserExpirationJob extends BaseJob {
   private static final String EMAIL = "email";
   private static final String USER_EXPIRATION_TEMPLATE = "userExpirationNotification";
   private static final String DAYS = " days";
-  private final String INACTIVITY_PERIOD = "inactivityPeriod";
-  private final String REMAINING_TIME = "remainingTime";
-  private final String DEADLINE_DATE = "deadlineDate";
+  private static final String INACTIVITY_PERIOD = "inactivityPeriod";
+  private static final String REMAINING_TIME = "remainingTime";
+  private static final String DEADLINE_DATE = "deadlineDate";
 
-  private final String SELECT_USERS_FOR_NOTIFY = "WITH user_last_action AS ( "
+  private static final String SELECT_USERS_FOR_NOTIFY = "WITH user_last_action AS ( "
       + "SELECT "
       + "  u.id as user_id, "
       + "  u.email as email, "
@@ -100,7 +102,7 @@ public class NotifyUserExpirationJob extends BaseJob {
             notification));
   }
 
-  public String getRemainingTime(long remainingTime) {
+  private String getRemainingTime(long remainingTime) {
     if (remainingTime == 1) {
       return "tomorrow";
     } else if (remainingTime == 30) {
@@ -117,13 +119,13 @@ public class NotifyUserExpirationJob extends BaseJob {
     parameters.addValue(RETENTION_PERIOD, retentionPeriod);
     return namedParameterJdbcTemplate.query(
         SELECT_USERS_FOR_NOTIFY, parameters, (rs, rowNum) -> {
-          EmailNotificationRequest emailNotificationRequest =
-              new EmailNotificationRequest(rs.getString(EMAIL), USER_EXPIRATION_TEMPLATE);
           Map<String, Object> params = new HashMap<>();
           params.put(INACTIVITY_PERIOD, rs.getLong(INACTIVITY_PERIOD) + DAYS);
           params.put(REMAINING_TIME, getRemainingTime(rs.getLong(REMAINING_TIME)));
           params.put(DEADLINE_DATE,
               String.valueOf(LocalDate.now().plusDays(rs.getLong(REMAINING_TIME))));
+          EmailNotificationRequest emailNotificationRequest =
+              new EmailNotificationRequest(rs.getString(EMAIL), USER_EXPIRATION_TEMPLATE);
           emailNotificationRequest.setParams(params);
           return emailNotificationRequest;
         });

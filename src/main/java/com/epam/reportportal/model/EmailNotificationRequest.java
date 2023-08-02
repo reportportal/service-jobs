@@ -19,6 +19,8 @@ package com.epam.reportportal.model;
 import java.util.Map;
 
 /**
+ * EmailNotification model for rabbitMq topic.
+ *
  * @author Andrei Piankouski
  */
 public class EmailNotificationRequest {
@@ -60,10 +62,10 @@ public class EmailNotificationRequest {
 
   @Override
   public String toString() {
-    return "EmailNotificationRequest{" +
-        "recipient='" + recipient + '\'' +
-        ", template='" + template + '\'' +
-        ", params=" + params +
-        '}';
+    return "EmailNotificationRequest{"
+        + "recipient='" + recipient + '\''
+        + ", template='" + template + '\''
+        + ", params=" + params
+        + '}';
   }
 }

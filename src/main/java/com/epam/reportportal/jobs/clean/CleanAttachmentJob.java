@@ -27,7 +27,7 @@ public class CleanAttachmentJob extends BaseCleanJob {
 		super(jdbcTemplate);
 	}
 
-	@Override
+  @Override
 	@Scheduled(cron = "${rp.environment.variable.clean.attachment.cron}")
 	@SchedulerLock(name = "cleanAttachment", lockAtMostFor = "24h")
 	public void execute() {

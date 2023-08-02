@@ -24,18 +24,20 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
+ * RabbitMQ queue and exchange configuration.
+ *
  * @author Andrei Piankouski
  */
 @Configuration
 public class InternalConfiguration {
 
   /**
-   * Exchanges
+   * Exchanges.
    */
   public static final String EXCHANGE_NOTIFICATION = "notification";
 
   /**
-   * Queues
+   * Queues.
    */
   public static final String QUEUE_EMAIL = "notification.email";
 
@@ -51,7 +53,8 @@ public class InternalConfiguration {
 
   @Bean
   public Binding emailNotificationBinding() {
-    return BindingBuilder.bind(emailNotificationQueue()).to(notificationExchange()).with(QUEUE_EMAIL);
+    return BindingBuilder.bind(emailNotificationQueue()).to(notificationExchange())
+        .with(QUEUE_EMAIL);
   }
 
 }

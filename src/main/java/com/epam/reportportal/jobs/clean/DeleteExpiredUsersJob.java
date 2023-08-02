@@ -60,7 +60,8 @@ public class DeleteExpiredUsersJob extends BaseJob {
   public static final String USER_DELETION_TEMPLATE = "userDeletionNotification";
   private static final String RETENTION_PERIOD = "retentionPeriod";
 
-  private static final String SELECT_EXPIRED_USERS = "SELECT u.id AS user_id, p.id AS project_id, u.email as user_email "
+  private static final String SELECT_EXPIRED_USERS = "SELECT u.id AS user_id, "
+      + "p.id AS project_id, u.email as user_email "
       + "FROM users u "
       + "LEFT JOIN api_keys ak ON u.id = ak.user_id "
       + "LEFT JOIN project p ON u.login || '_personal' = p.name AND p.project_type = 'PERSONAL' "
@@ -204,7 +205,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
   }
 
   private void sendNotificationEmail(List<String> recipients) {
-    for (String recipient: recipients) {
+    for (String recipient : recipients) {
       EmailNotificationRequest notification =
           new EmailNotificationRequest(recipient, USER_DELETION_TEMPLATE);
       rabbitTemplate.convertAndSend(EXCHANGE_NOTIFICATION, QUEUE_EMAIL, notification);

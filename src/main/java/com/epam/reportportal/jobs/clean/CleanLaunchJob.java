@@ -53,7 +53,7 @@ public class CleanLaunchJob extends BaseCleanJob {
 		this.elasticSearchClient = elasticSearchClient;
 	}
 
-	@Override
+  @Override
 	@Scheduled(cron = "${rp.environment.variable.clean.launch.cron}")
 	@SchedulerLock(name = "cleanLaunch", lockAtMostFor = "24h")
 	public void execute() {

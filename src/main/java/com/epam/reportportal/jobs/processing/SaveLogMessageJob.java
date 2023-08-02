@@ -2,12 +2,11 @@ package com.epam.reportportal.jobs.processing;
 
 import com.epam.reportportal.log.LogMessage;
 import com.epam.reportportal.log.LogProcessing;
+import java.util.Objects;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
-
-import java.util.Objects;
 
 /**
  * Log consumer.
@@ -17,17 +16,19 @@ import java.util.Objects;
 @Service
 @ConditionalOnProperty(prefix = "rp.elasticsearch", name = "host")
 public class SaveLogMessageJob {
-    public static final String LOG_MESSAGE_SAVING_QUEUE_NAME = "log_message_saving";
-    private final LogProcessing logProcessing;
 
-    public SaveLogMessageJob(LogProcessing logProcessing) {
-        this.logProcessing = logProcessing;
-    }
+  public static final String LOG_MESSAGE_SAVING_QUEUE_NAME = "log_message_saving";
+  private final LogProcessing logProcessing;
 
-    @RabbitListener(queues = LOG_MESSAGE_SAVING_QUEUE_NAME, containerFactory = "rabbitListenerContainerFactory")
-    public void execute(@Payload LogMessage logMessage) {
-        if (Objects.nonNull(logMessage)) {
-            this.logProcessing.add(logMessage);
-        }
+  public SaveLogMessageJob(LogProcessing logProcessing) {
+    this.logProcessing = logProcessing;
+  }
+
+  @RabbitListener(queues = LOG_MESSAGE_SAVING_QUEUE_NAME,
+      containerFactory = "rabbitListenerContainerFactory")
+  public void execute(@Payload LogMessage logMessage) {
+    if (Objects.nonNull(logMessage)) {
+      this.logProcessing.add(logMessage);
     }
+  }
 }
