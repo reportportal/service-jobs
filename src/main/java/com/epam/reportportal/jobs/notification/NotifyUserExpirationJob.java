@@ -70,7 +70,7 @@ public class NotifyUserExpirationJob extends BaseJob {
       + "  user_last_action.user_id, "
       + "  user_last_action.email, "
       + "  user_last_action.inactivityPeriod, "
-      + "  :retentionPeriod - inactivityPeriod IN (1, 30, 60) as remainingTime "
+      + "  :retentionPeriod - inactivityPeriod as remainingTime "
       + "FROM "
       + "  user_last_action "
       + "WHERE "
