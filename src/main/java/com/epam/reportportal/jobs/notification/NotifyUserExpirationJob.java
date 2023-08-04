@@ -124,9 +124,9 @@ public class NotifyUserExpirationJob extends BaseJob {
     if (remainingTime == 1) {
       return "tomorrow";
     } else if (remainingTime == 30) {
-      return "1 month";
+      return "in 1 month";
     } else if (remainingTime == 60) {
-      return "2 months";
+      return "in 2 months";
     } else {
       return remainingTime + DAYS;
     }
@@ -140,7 +140,7 @@ public class NotifyUserExpirationJob extends BaseJob {
 
   private String getInactivityPeriod(int inactivityPeriod) {
     int inactivityMouths = inactivityPeriod / 30;
-    return retentionPeriod - inactivityPeriod == 1 ? "almost " + retentionPeriod / 30 + " months"
-        : inactivityMouths + " months";
+    return retentionPeriod - inactivityPeriod == 1 ? "<b>almost " + retentionPeriod / 30 + " months</b>"
+        : "for <b>" + inactivityMouths + " months</b>";
   }
 }
