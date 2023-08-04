@@ -141,6 +141,6 @@ public class NotifyUserExpirationJob extends BaseJob {
   private String getInactivityPeriod(int inactivityPeriod) {
     int inactivityMouths = inactivityPeriod / 30;
     return retentionPeriod - inactivityPeriod == 1 ? "<b>almost " + retentionPeriod / 30 + " months</b>"
-        : "for <b>" + inactivityMouths + " months</b>";
+        : "the past <b>" + inactivityMouths + " months</b>";
   }
 }
