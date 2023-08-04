@@ -56,7 +56,7 @@ public class NotifyUserExpirationJob extends BaseJob {
       + "  u.id as user_id, "
       + "  u.email as email, "
       + "DATE_PART('day', NOW() - GREATEST("
-      + "  to_timestamp(CAST(u.metadata->'metadata'->>'last_login' AS bigint) / 1000), "
+      + "  DATE(to_timestamp(CAST(u.metadata->'metadata'->>'last_login' AS bigint) / 1000)), "
       + "MAX(ak.last_used_at))) AS inactivityPeriod "
       + "FROM "
       + "  users u "
