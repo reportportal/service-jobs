@@ -95,5 +95,3 @@ datastore:
   bucketPostfix:
   defaultBucketName: rp-bucket
   region: #{null}
-
-
