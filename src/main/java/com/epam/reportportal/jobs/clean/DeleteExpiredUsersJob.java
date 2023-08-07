@@ -141,6 +141,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
       UserProject userProject = new UserProject();
       userProject.setUserId(rs.getLong("user_id"));
       userProject.setProjectId(rs.getLong("project_id"));
+      userProject.setEmail(rs.getString("user_email"));
       return userProject;
     };
 
