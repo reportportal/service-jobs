@@ -134,7 +134,6 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private List<UserProject> findUsersAndPersonalProjects() {
     MapSqlParameterSource params = new MapSqlParameterSource();
-    params.addValue("now_ms", System.currentTimeMillis());
     params.addValue(RETENTION_PERIOD, lastLoginBorder());
 
     RowMapper<UserProject> rowMapper = (rs, rowNum) -> {
