@@ -16,16 +16,15 @@
 
 package com.epam.reportportal.jobs.clean;
 
-import static com.epam.reportportal.config.rabbit.InternalConfiguration.EXCHANGE_NOTIFICATION;
-import static com.epam.reportportal.config.rabbit.InternalConfiguration.QUEUE_EMAIL;
-
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import com.epam.reportportal.jobs.BaseJob;
-import com.epam.reportportal.model.EmailNotificationRequest;
-import java.time.LocalDate;
+import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
+import com.epam.reportportal.model.activity.event.UnassignUserEvent;
+import com.epam.reportportal.model.activity.event.UserDeletedEvent;
+import com.epam.reportportal.service.MessageBus;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,9 +33,7 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.jclouds.blobstore.BlobStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -44,6 +41,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 /**
  * Deleting Users and their personal project by retention policy.
@@ -57,7 +55,6 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-  public static final String USER_DELETION_TEMPLATE = "userDeletionNotification";
   private static final String RETENTION_PERIOD = "retentionPeriod";
 
   private static final String SELECT_EXPIRED_USERS = "SELECT u.id AS user_id, "
@@ -95,6 +92,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private static final String DELETE_PROJECTS_BY_ID_LIST =
       "DELETE FROM project WHERE id IN (:projectIds)";
 
+  private static final String FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS = "SELECT p.id "
+      + "FROM project_user pu "
+      + "JOIN project p ON pu.project_id = p.id "
+      + "WHERE p.project_type != 'PERSONAL' AND pu.user_id IN (:userIds)";
+
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
   private long retentionPeriod;
 
@@ -102,7 +104,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private final IndexerServiceClient indexerServiceClient;
 
-  private final RabbitTemplate rabbitTemplate;
+  private final MessageBus messageBus;
 
   @Value("${datastore.bucketPrefix}")
   private String bucketPrefix;
@@ -111,12 +113,12 @@ public class DeleteExpiredUsersJob extends BaseJob {
   public DeleteExpiredUsersJob(JdbcTemplate jdbcTemplate,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate,
       BlobStore blobStore, IndexerServiceClient indexerServiceClient,
-      @Qualifier("rabbitTemplate") RabbitTemplate rabbitTemplate) {
+      MessageBus messageBus) {
     super(jdbcTemplate);
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     this.blobStore = blobStore;
     this.indexerServiceClient = indexerServiceClient;
-    this.rabbitTemplate = rabbitTemplate;
+    this.messageBus = messageBus;
   }
 
   @Override
@@ -125,11 +127,30 @@ public class DeleteExpiredUsersJob extends BaseJob {
   public void execute() {
     List<UserProject> userProjects = findUsersAndPersonalProjects();
     List<Long> userIds = getUserIds(userProjects);
+
+    List<Long> personalProjectIds = getProjectIds(userProjects);
+    List<Long> nonPersonalProjectsByUserIds = findNonPersonalProjectIdsByUserIds(userIds);
+
     deleteUsersByIds(userIds);
-    getProjectIds(userProjects).forEach(this::deleteProjectAssociatedData);
-    deleteProjectsByIds(getProjectIds(userProjects));
-    sendNotificationEmail(getUserEmails(userProjects));
+    publishUnassignUserEvents(nonPersonalProjectsByUserIds);
+    personalProjectIds.forEach(this::deleteProjectAssociatedData);
+    deleteProjectsByIds(personalProjectIds);
+
+    messageBus.sendNotificationEmail(getUserEmails(userProjects));
+
     LOGGER.info("{} - users was deleted due to retention policy", userIds.size());
+  }
+
+  private void publishUnassignUserEvents(List<Long> nonPersonalProjectsByUserIds) {
+    nonPersonalProjectsByUserIds.forEach(
+        projectId -> messageBus.publishActivity(new UnassignUserEvent(projectId)));
+  }
+
+  private List<Long> findNonPersonalProjectIdsByUserIds(List<Long> userIds) {
+    return CollectionUtils.isEmpty(userIds)
+        ? Collections.emptyList()
+        : namedParameterJdbcTemplate.queryForList(FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS,
+            Map.of("userIds", userIds), Long.class);
   }
 
   private List<UserProject> findUsersAndPersonalProjects() {
@@ -164,6 +185,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
       MapSqlParameterSource params = new MapSqlParameterSource();
       params.addValue("userIds", userIds);
       namedParameterJdbcTemplate.update(DELETE_USERS, params);
+      messageBus.publishActivity(new UserDeletedEvent(userIds.size()));
     }
   }
 
@@ -184,6 +206,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
       MapSqlParameterSource params = new MapSqlParameterSource();
       params.addValue("projectIds", projectIds);
       namedParameterJdbcTemplate.update(DELETE_PROJECTS_BY_ID_LIST, params);
+      messageBus.publishActivity(new ProjectDeletedEvent(projectIds.size()));
     }
   }
 
@@ -202,14 +225,6 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private List<Long> getProjectIds(List<UserProject> userProjects) {
     return userProjects.stream().filter(Objects::nonNull).map(UserProject::getProjectId)
         .collect(Collectors.toList());
-  }
-
-  private void sendNotificationEmail(List<String> recipients) {
-    for (String recipient : recipients) {
-      EmailNotificationRequest notification =
-          new EmailNotificationRequest(recipient, USER_DELETION_TEMPLATE);
-      rabbitTemplate.convertAndSend(EXCHANGE_NOTIFICATION, QUEUE_EMAIL, notification);
-    }
   }
 
   private static class UserProject {
