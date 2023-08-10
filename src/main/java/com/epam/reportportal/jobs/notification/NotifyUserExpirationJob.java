@@ -16,19 +16,15 @@
 
 package com.epam.reportportal.jobs.notification;
 
-import static com.epam.reportportal.config.rabbit.InternalConfiguration.EXCHANGE_NOTIFICATION;
-import static com.epam.reportportal.config.rabbit.InternalConfiguration.QUEUE_EMAIL;
-
 import com.epam.reportportal.jobs.BaseJob;
 import com.epam.reportportal.model.EmailNotificationRequest;
+import com.epam.reportportal.service.MessageBus;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -83,15 +79,15 @@ public class NotifyUserExpirationJob extends BaseJob {
 
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-  private final RabbitTemplate rabbitTemplate;
+  private final MessageBus messageBus;
 
   @Autowired
   public NotifyUserExpirationJob(JdbcTemplate jdbcTemplate,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-      @Qualifier("rabbitTemplate") RabbitTemplate rabbitTemplate) {
+      MessageBus messageBus) {
     super(jdbcTemplate);
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
-    this.rabbitTemplate = rabbitTemplate;
+    this.messageBus = messageBus;
   }
 
   @Override
@@ -99,9 +95,7 @@ public class NotifyUserExpirationJob extends BaseJob {
   @SchedulerLock(name = "notifyUserExpiration", lockAtMostFor = "24h")
   public void execute() {
     List<EmailNotificationRequest> notifications = getUsersForNotify();
-    notifications.forEach(
-        notification -> rabbitTemplate.convertAndSend(EXCHANGE_NOTIFICATION, QUEUE_EMAIL,
-            notification));
+    messageBus.publishEmailNotificationEvents(notifications);
   }
 
   private List<EmailNotificationRequest> getUsersForNotify() {
@@ -140,7 +134,8 @@ public class NotifyUserExpirationJob extends BaseJob {
 
   private String getInactivityPeriod(int inactivityPeriod) {
     int inactivityMouths = inactivityPeriod / 30;
-    return retentionPeriod - inactivityPeriod == 1 ? "<b>almost " + retentionPeriod / 30 + " months</b>"
+    return retentionPeriod - inactivityPeriod == 1 ? "<b>almost " + retentionPeriod / 30
+        + " months</b>"
         : "the past <b>" + inactivityMouths + " months</b>";
   }
 }

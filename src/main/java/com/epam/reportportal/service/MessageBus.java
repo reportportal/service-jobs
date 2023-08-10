@@ -16,6 +16,7 @@
 
 package com.epam.reportportal.service;
 
+import com.epam.reportportal.model.EmailNotificationRequest;
 import com.epam.reportportal.model.activity.ActivityEvent;
 import java.util.List;
 
@@ -28,6 +29,6 @@ public interface MessageBus {
 
   void publishActivity(ActivityEvent event);
 
-  void sendNotificationEmail(List<String> recipients);
+  void publishEmailNotificationEvents(List<EmailNotificationRequest> notifications);
 
 }

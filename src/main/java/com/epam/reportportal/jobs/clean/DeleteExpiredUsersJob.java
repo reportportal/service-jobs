@@ -18,6 +18,7 @@ package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import com.epam.reportportal.jobs.BaseJob;
+import com.epam.reportportal.model.EmailNotificationRequest;
 import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
 import com.epam.reportportal.model.activity.event.UnassignUserEvent;
 import com.epam.reportportal.model.activity.event.UserDeletedEvent;
@@ -56,6 +57,8 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
   private static final String RETENTION_PERIOD = "retentionPeriod";
+
+  private static final String USER_DELETION_TEMPLATE = "userDeletionNotification";
 
   private static final String SELECT_EXPIRED_USERS = "SELECT u.id AS user_id, "
       + "p.id AS project_id, u.email as user_email "
@@ -136,9 +139,16 @@ public class DeleteExpiredUsersJob extends BaseJob {
     personalProjectIds.forEach(this::deleteProjectAssociatedData);
     deleteProjectsByIds(personalProjectIds);
 
-    messageBus.sendNotificationEmail(getUserEmails(userProjects));
+    publishEmailNotificationEvents(getUserEmails(userProjects));
 
     LOGGER.info("{} - users was deleted due to retention policy", userIds.size());
+  }
+
+  private void publishEmailNotificationEvents(List<String> userEmails) {
+    List<EmailNotificationRequest> notifications = userEmails.stream()
+        .map(recipient -> new EmailNotificationRequest(recipient, USER_DELETION_TEMPLATE))
+        .collect(Collectors.toList());
+    messageBus.publishEmailNotificationEvents(notifications);
   }
 
   private void publishUnassignUserEvents(List<Long> nonPersonalProjectsByUserIds) {
