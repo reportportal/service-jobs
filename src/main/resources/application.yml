@@ -15,11 +15,6 @@ rp:
           cron: '0 0 */24 * * *'
           chunkSize: 1000
           batchSize: 100
-        expired:
-          ## 24 hours
-          cron: '0 0 */24 * * *'
-          ## Retentions period in days
-          retentionPeriod: 1
         attachment:
           ## 24 hours
           cron: '0 0 */24 * * *'
@@ -34,6 +29,9 @@ rp:
           cron: '0 0 */24 * * *'
           liveTimeout: 7200
           batch: 100
+        expiredUser:
+          ## 24 hours
+          cron: '0 0 */24 * * *'
       storage:
         project:
           ## 1 minute

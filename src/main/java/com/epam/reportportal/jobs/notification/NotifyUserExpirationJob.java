@@ -19,13 +19,17 @@ package com.epam.reportportal.jobs.notification;
 import com.epam.reportportal.jobs.BaseJob;
 import com.epam.reportportal.model.EmailNotificationRequest;
 import com.epam.reportportal.service.MessageBus;
+import com.epam.reportportal.utils.ValidationUtil;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -38,7 +42,11 @@ import org.springframework.stereotype.Service;
  * @author Andrei Piankouski
  */
 @Service
+@ConditionalOnProperty(prefix = "rp.environment.variable",
+    name = "clean.expiredUser.retentionPeriod")
 public class NotifyUserExpirationJob extends BaseJob {
+
+  public static final Logger LOGGER = LoggerFactory.getLogger(NotifyUserExpirationJob.class);
 
   private static final String EMAIL = "email";
   private static final String USER_EXPIRATION_TEMPLATE = "userExpirationNotification";
@@ -75,7 +83,7 @@ public class NotifyUserExpirationJob extends BaseJob {
   private static final String RETENTION_PERIOD = "retentionPeriod";
 
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
-  private long retentionPeriod;
+  private Long retentionPeriod;
 
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
@@ -94,6 +102,10 @@ public class NotifyUserExpirationJob extends BaseJob {
   @Scheduled(cron = "${rp.environment.variable.notification.expiredUser.cron}")
   @SchedulerLock(name = "notifyUserExpiration", lockAtMostFor = "24h")
   public void execute() {
+    if (ValidationUtil.isInvalidRetentionPeriod(retentionPeriod)) {
+      LOGGER.info("No notifications are send to users.");
+      return;
+    }
     List<EmailNotificationRequest> notifications = getUsersForNotify();
     messageBus.publishEmailNotificationEvents(notifications);
   }

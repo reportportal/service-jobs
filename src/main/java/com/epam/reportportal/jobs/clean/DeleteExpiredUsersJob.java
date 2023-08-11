@@ -23,6 +23,7 @@ import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
 import com.epam.reportportal.model.activity.event.UnassignUserEvent;
 import com.epam.reportportal.model.activity.event.UserDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
+import com.epam.reportportal.utils.ValidationUtil;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Collections;
@@ -36,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -50,6 +52,8 @@ import org.springframework.util.CollectionUtils;
  * @author Andrei Piankouski
  */
 @Service
+@ConditionalOnProperty(prefix = "rp.environment.variable",
+    name = "clean.expiredUser.retentionPeriod")
 public class DeleteExpiredUsersJob extends BaseJob {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(DeleteExpiredUsersJob.class);
@@ -101,7 +105,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
       + "WHERE p.project_type != 'PERSONAL' AND pu.user_id IN (:userIds)";
 
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
-  private long retentionPeriod;
+  private Long retentionPeriod;
 
   private final BlobStore blobStore;
 
@@ -128,6 +132,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
   @Scheduled(cron = "${rp.environment.variable.clean.expiredUser.cron}")
   @SchedulerLock(name = "deleteExpiredUsers", lockAtMostFor = "24h")
   public void execute() {
+    if (ValidationUtil.isInvalidRetentionPeriod(retentionPeriod)) {
+      LOGGER.info("No users are deleted");
+      return;
+    }
+
     List<UserProject> userProjects = findUsersAndPersonalProjects();
     List<Long> userIds = getUserIds(userProjects);
 
