@@ -37,8 +37,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class MessageBusImpl implements MessageBus {
 
-  public static final String USER_DELETION_TEMPLATE = "userDeletionNotification";
-
   private final RabbitTemplate rabbitTemplate;
 
   public MessageBusImpl(@Qualifier("rabbitTemplate") RabbitTemplate rabbitTemplate) {
@@ -67,11 +65,9 @@ public class MessageBusImpl implements MessageBus {
   }
 
   @Override
-  public void sendNotificationEmail(List<String> recipients) {
-    for (String recipient : recipients) {
-      EmailNotificationRequest notification =
-          new EmailNotificationRequest(recipient, USER_DELETION_TEMPLATE);
-      rabbitTemplate.convertAndSend(EXCHANGE_NOTIFICATION, QUEUE_EMAIL, notification);
-    }
+  public void publishEmailNotificationEvents(List<EmailNotificationRequest> notifications) {
+    notifications.forEach(notification ->
+        rabbitTemplate.convertAndSend(EXCHANGE_NOTIFICATION, QUEUE_EMAIL, notification));
   }
+
 }

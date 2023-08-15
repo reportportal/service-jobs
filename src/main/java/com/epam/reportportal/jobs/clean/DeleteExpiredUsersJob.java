@@ -18,10 +18,12 @@ package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import com.epam.reportportal.jobs.BaseJob;
+import com.epam.reportportal.model.EmailNotificationRequest;
 import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
 import com.epam.reportportal.model.activity.event.UnassignUserEvent;
 import com.epam.reportportal.model.activity.event.UserDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
+import com.epam.reportportal.utils.ValidationUtil;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Collections;
@@ -35,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -49,6 +52,8 @@ import org.springframework.util.CollectionUtils;
  * @author Andrei Piankouski
  */
 @Service
+@ConditionalOnProperty(prefix = "rp.environment.variable",
+    name = "clean.expiredUser.retentionPeriod")
 public class DeleteExpiredUsersJob extends BaseJob {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(DeleteExpiredUsersJob.class);
@@ -56,6 +61,8 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
   private static final String RETENTION_PERIOD = "retentionPeriod";
+
+  private static final String USER_DELETION_TEMPLATE = "userDeletionNotification";
 
   private static final String SELECT_EXPIRED_USERS = "SELECT u.id AS user_id, "
       + "p.id AS project_id, u.email as user_email "
@@ -98,7 +105,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
       + "WHERE p.project_type != 'PERSONAL' AND pu.user_id IN (:userIds)";
 
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
-  private long retentionPeriod;
+  private Long retentionPeriod;
 
   private final BlobStore blobStore;
 
@@ -125,6 +132,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
   @Scheduled(cron = "${rp.environment.variable.clean.expiredUser.cron}")
   @SchedulerLock(name = "deleteExpiredUsers", lockAtMostFor = "24h")
   public void execute() {
+    if (ValidationUtil.isInvalidRetentionPeriod(retentionPeriod)) {
+      LOGGER.info("No users are deleted");
+      return;
+    }
+
     List<UserProject> userProjects = findUsersAndPersonalProjects();
     List<Long> userIds = getUserIds(userProjects);
 
@@ -136,9 +148,16 @@ public class DeleteExpiredUsersJob extends BaseJob {
     personalProjectIds.forEach(this::deleteProjectAssociatedData);
     deleteProjectsByIds(personalProjectIds);
 
-    messageBus.sendNotificationEmail(getUserEmails(userProjects));
+    publishEmailNotificationEvents(getUserEmails(userProjects));
 
     LOGGER.info("{} - users was deleted due to retention policy", userIds.size());
+  }
+
+  private void publishEmailNotificationEvents(List<String> userEmails) {
+    List<EmailNotificationRequest> notifications = userEmails.stream()
+        .map(recipient -> new EmailNotificationRequest(recipient, USER_DELETION_TEMPLATE))
+        .collect(Collectors.toList());
+    messageBus.publishEmailNotificationEvents(notifications);
   }
 
   private void publishUnassignUserEvents(List<Long> nonPersonalProjectsByUserIds) {
