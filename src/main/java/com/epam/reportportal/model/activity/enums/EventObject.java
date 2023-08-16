@@ -23,6 +23,7 @@ package com.epam.reportportal.model.activity.enums;
  */
 public enum EventObject {
 
-  USER
+  USER,
+  PROJECT
 
 }
