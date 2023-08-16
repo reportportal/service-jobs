@@ -45,7 +45,7 @@ public class ProjectDeletedEvent implements ActivityEvent {
         .addAction(EventAction.BULK_DELETE)
         .addEventName(ActivityAction.BULK_DELETE_PROJECT.getValue())
         .addObjectName(getFormatText())
-        .addObjectType(EventObject.USER)
+        .addObjectType(EventObject.PROJECT)
         .addSubjectName(EventSubject.APPLICATION.getApplicationName())
         .addSubjectType(EventSubject.APPLICATION)
         .addPriority(EventPriority.CRITICAL)
