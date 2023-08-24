@@ -27,6 +27,7 @@ public class CleanAttachmentJob extends BaseCleanJob {
 		super(jdbcTemplate);
 	}
 
+  @Override
 	@Scheduled(cron = "${rp.environment.variable.clean.attachment.cron}")
 	@SchedulerLock(name = "cleanAttachment", lockAtMostFor = "24h")
 	public void execute() {
@@ -34,7 +35,6 @@ public class CleanAttachmentJob extends BaseCleanJob {
 	}
 
 	void moveAttachments() {
-		logStart();
 		AtomicInteger counter = new AtomicInteger(0);
 		getProjectsWithAttribute(KEEP_SCREENSHOTS).forEach((projectId, duration) -> {
 			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
@@ -42,6 +42,5 @@ public class CleanAttachmentJob extends BaseCleanJob {
 			counter.addAndGet(movedCount);
 			LOGGER.info("Moved {} attachments to the deletion table for project {}, lessThanDate {} ", movedCount, projectId, lessThanDate);
 		});
-		logFinish(counter.get());
 	}
 }

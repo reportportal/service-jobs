@@ -5,15 +5,19 @@ rp:
     variable:
       elements-counter:
         batch-size: 50
+      notification:
+        expiredUser:
+          ## 24 hours
+          cron: '0 0 */24 * * *'
       clean:
         storage:
-          ## 30 seconds
-          cron: '*/30 * * * * *'
+          ## 24 hours
+          cron: '0 0 */24 * * *'
           chunkSize: 1000
           batchSize: 100
         attachment:
-          ## 2 minutes
-          cron: '0 */2 * * * *'
+          ## 24 hours
+          cron: '0 0 */24 * * *'
         log:
           ## 5 minutes
           cron: '0 */5 * * * *'
@@ -23,9 +27,11 @@ rp:
         view:
           ## 24 hours
           cron: '0 0 */24 * * *'
-          ## 2 hours
           liveTimeout: 7200
           batch: 100
+        expiredUser:
+          ## 24 hours
+          cron: '0 0 */24 * * *'
       storage:
         project:
           ## 1 minute

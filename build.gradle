@@ -68,6 +68,7 @@ dependencies {
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.12.0'
 
 
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -98,7 +99,5 @@ test {
     useJUnitPlatform()
 }
 
-addDockerfileToGit.dependsOn createDockerfile
-beforeReleaseBuild.dependsOn addDockerfileToGit
 publish.dependsOn build
 publish.mustRunAfter build
