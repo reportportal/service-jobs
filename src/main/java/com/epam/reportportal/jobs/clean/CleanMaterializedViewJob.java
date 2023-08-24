@@ -51,10 +51,10 @@ public class CleanMaterializedViewJob extends BaseJob {
 		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
 	}
 
+  @Override
 	@Scheduled(cron = "${rp.environment.variable.clean.view.cron}")
 	@SchedulerLock(name = "cleanMaterializedView", lockAtMostFor = "24h")
 	public void execute() {
-		logStart();
 		final AtomicInteger existingCounter = new AtomicInteger(0);
 		final AtomicInteger staleCounter = new AtomicInteger(0);
 
@@ -75,9 +75,6 @@ public class CleanMaterializedViewJob extends BaseJob {
 
 			staleViews = getStaleViews(timeBound);
 		}
-
-		logFinish(String.format("Stale removed: %d, Existing removed: %d", staleCounter.get(), existingCounter.get()));
-
 	}
 
 	private List<StaleMaterializedView> getStaleViews(LocalDateTime timeBound) {

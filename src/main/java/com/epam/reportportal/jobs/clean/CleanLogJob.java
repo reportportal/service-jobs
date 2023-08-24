@@ -45,6 +45,7 @@ public class CleanLogJob extends BaseCleanJob {
 		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
 	}
 
+  @Override
 	@Scheduled(cron = "${rp.environment.variable.clean.log.cron}")
 	@SchedulerLock(name = "cleanLog", lockAtMostFor = "24h")
 	public void execute() {
@@ -53,7 +54,6 @@ public class CleanLogJob extends BaseCleanJob {
 	}
 
 	void removeLogs() {
-		logStart();
 		AtomicInteger counter = new AtomicInteger(0);
 		// TODO: Need to refactor Logs to keep real it's launchId and combine code with
 		// CleanLaunch to avoid duplication
@@ -76,8 +76,6 @@ public class CleanLogJob extends BaseCleanJob {
 //				LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
 			}
 		});
-
-		logFinish(counter.get());
 	}
 
 	private void deleteLogsFromElasticsearchByLaunchIdsAndProjectId(List<Long> launchIds, Long projectId) {

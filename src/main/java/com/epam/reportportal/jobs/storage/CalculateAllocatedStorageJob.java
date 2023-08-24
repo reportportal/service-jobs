@@ -33,12 +33,10 @@ public class CalculateAllocatedStorageJob extends BaseJob {
 
 	@Scheduled(cron = "${rp.environment.variable.storage.project.cron}")
 	@SchedulerLock(name = "calculateAllocatedStorage", lockAtMostFor = "24h")
-	public void calculate() {
-		logStart();
+  public void execute() {
 		CompletableFuture.allOf(getProjectIds().stream()
 				.map(id -> CompletableFuture.runAsync(() -> updateAllocatedStorage(id), projectAllocatedStorageExecutor))
 				.toArray(CompletableFuture[]::new)).join();
-		logFinish();
 	}
 
 	private List<Long> getProjectIds() {
