@@ -44,27 +44,27 @@ public class CleanLogJob extends BaseCleanJob {
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
   }
 
-  @Scheduled(cron = "${rp.environment.variable.clean.log.cron}")
-  @SchedulerLock(name = "cleanLog", lockAtMostFor = "24h")
-  public void execute() {
-    removeLogs();
-    cleanAttachmentJob.moveAttachments();
-  }
+  @Override
+	@Scheduled(cron = "${rp.environment.variable.clean.log.cron}")
+	@SchedulerLock(name = "cleanLog", lockAtMostFor = "24h")
+	public void execute() {
+		removeLogs();
+		cleanAttachmentJob.moveAttachments();
+	}
 
-  void removeLogs() {
-    logStart();
-    AtomicInteger counter = new AtomicInteger(0);
-    // TODO: Need to refactor Logs to keep real it's launchId and combine code with
-    // CleanLaunch to avoid duplication
-    getProjectsWithAttribute(KEEP_LOGS).forEach((projectId, duration) -> {
-      final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
-      int deleted = jdbcTemplate.update(DELETE_LOGS_QUERY, projectId, lessThanDate);
-      counter.addAndGet(deleted);
-      LOGGER.info("Delete {} logs for project {}", deleted, projectId);
-      // to avoid error message in analyzer log, doesn't find index
-      if (deleted > 0) {
-        indexerServiceClient.removeFromIndexLessThanLogDate(projectId, lessThanDate);
-        LOGGER.info("Send message for deletion to analyzer for project {}", projectId);
+	void removeLogs() {
+		AtomicInteger counter = new AtomicInteger(0);
+		// TODO: Need to refactor Logs to keep real it's launchId and combine code with
+		// CleanLaunch to avoid duplication
+		getProjectsWithAttribute(KEEP_LOGS).forEach((projectId, duration) -> {
+			final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
+			int deleted = jdbcTemplate.update(DELETE_LOGS_QUERY, projectId, lessThanDate);
+			counter.addAndGet(deleted);
+			LOGGER.info("Delete {} logs for project {}", deleted, projectId);
+			// to avoid error message in analyzer log, doesn't find index
+			if (deleted > 0) {
+				indexerServiceClient.removeFromIndexLessThanLogDate(projectId, lessThanDate);
+				LOGGER.info("Send message for deletion to analyzer for project {}", projectId);
 
         final List<Long> launchIds = getLaunchIds(projectId, lessThanDate);
         if (!launchIds.isEmpty()) {
@@ -73,11 +73,9 @@ public class CleanLogJob extends BaseCleanJob {
 
 //				eventPublisher.publishEvent(new ElementsDeletedEvent(this, projectId, deleted));
 //				LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
-      }
-    });
-
-    logFinish(counter.get());
-  }
+			}
+		});
+	}
 
   private void deleteLogsFromElasticsearchByLaunchIdsAndProjectId(List<Long> launchIds,
       Long projectId) {

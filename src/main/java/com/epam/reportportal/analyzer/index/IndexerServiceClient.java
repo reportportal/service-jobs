@@ -47,4 +47,18 @@ public interface IndexerServiceClient {
    */
   void removeFromIndexLessThanLaunchDate(Long index, LocalDateTime lessThanDate);
 
+	/**
+	 * Delete index
+	 *
+	 * @param index Index to be deleted
+	 */
+	void deleteIndex(Long index);
+
+	/**
+	 * Removes suggest index
+	 *
+	 * @param projectId Project/index id
+	 */
+	void removeSuggest(Long projectId);
+
 }

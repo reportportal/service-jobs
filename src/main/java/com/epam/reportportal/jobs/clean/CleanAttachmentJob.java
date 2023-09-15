@@ -26,22 +26,20 @@ public class CleanAttachmentJob extends BaseCleanJob {
     super(jdbcTemplate);
   }
 
-  @Scheduled(cron = "${rp.environment.variable.clean.attachment.cron}")
-  @SchedulerLock(name = "cleanAttachment", lockAtMostFor = "24h")
-  public void execute() {
-    moveAttachments();
-  }
+  @Override
+	@Scheduled(cron = "${rp.environment.variable.clean.attachment.cron}")
+	@SchedulerLock(name = "cleanAttachment", lockAtMostFor = "24h")
+	public void execute() {
+		moveAttachments();
+	}
 
-  void moveAttachments() {
-    logStart();
-    AtomicInteger counter = new AtomicInteger(0);
-    getProjectsWithAttribute(KEEP_SCREENSHOTS).forEach((projectId, duration) -> {
-      LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
-      int movedCount = jdbcTemplate.update(MOVING_QUERY, projectId, lessThanDate);
-      counter.addAndGet(movedCount);
-      LOGGER.info("Moved {} attachments to the deletion table for project {}, lessThanDate {} ",
-          movedCount, projectId, lessThanDate);
-    });
-    logFinish(counter.get());
-  }
+	void moveAttachments() {
+		AtomicInteger counter = new AtomicInteger(0);
+		getProjectsWithAttribute(KEEP_SCREENSHOTS).forEach((projectId, duration) -> {
+			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
+			int movedCount = jdbcTemplate.update(MOVING_QUERY, projectId, lessThanDate);
+			counter.addAndGet(movedCount);
+			LOGGER.info("Moved {} attachments to the deletion table for project {}, lessThanDate {} ", movedCount, projectId, lessThanDate);
+		});
+	}
 }

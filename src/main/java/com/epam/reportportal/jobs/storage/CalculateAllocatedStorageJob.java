@@ -31,16 +31,13 @@ public class CalculateAllocatedStorageJob extends BaseJob {
     this.projectAllocatedStorageExecutor = projectAllocatedStorageExecutor;
   }
 
-  @Scheduled(cron = "${rp.environment.variable.storage.project.cron}")
-  @SchedulerLock(name = "calculateAllocatedStorage", lockAtMostFor = "24h")
-  public void calculate() {
-    logStart();
-    CompletableFuture.allOf(getProjectIds().stream()
-        .map(id -> CompletableFuture.runAsync(() -> updateAllocatedStorage(id),
-            projectAllocatedStorageExecutor))
-        .toArray(CompletableFuture[]::new)).join();
-    logFinish();
-  }
+	@Scheduled(cron = "${rp.environment.variable.storage.project.cron}")
+	@SchedulerLock(name = "calculateAllocatedStorage", lockAtMostFor = "24h")
+  public void execute() {
+		CompletableFuture.allOf(getProjectIds().stream()
+				.map(id -> CompletableFuture.runAsync(() -> updateAllocatedStorage(id), projectAllocatedStorageExecutor))
+				.toArray(CompletableFuture[]::new)).join();
+	}
 
   private List<Long> getProjectIds() {
     return jdbcTemplate.queryForList(SELECT_PROJECT_IDS_QUERY, Long.class);

@@ -11,7 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
-public class BaseCleanJob extends BaseJob {
+public abstract class BaseCleanJob extends BaseJob {
 
   protected static final String KEEP_LAUNCHES = "job.keepLaunches";
   protected static final String KEEP_LOGS = "job.keepLogs";

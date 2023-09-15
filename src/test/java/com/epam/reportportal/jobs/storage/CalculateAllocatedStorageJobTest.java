@@ -57,7 +57,7 @@ class CalculateAllocatedStorageJobTest {
     when(jdbcTemplate.queryForObject(eq(SELECT_FILE_SIZE_SUM_BY_PROJECT_ID_QUERY), eq(Long.class),
         anyLong())).thenReturn(1000L);
 
-    calculateAllocatedStorageJob.calculate();
+		calculateAllocatedStorageJob.execute();
 
     verify(jdbcTemplate, times(2)).queryForObject(eq(SELECT_FILE_SIZE_SUM_BY_PROJECT_ID_QUERY),
         eq(Long.class), anyLong());

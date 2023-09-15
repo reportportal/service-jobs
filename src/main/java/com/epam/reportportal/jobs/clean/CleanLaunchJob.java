@@ -52,21 +52,21 @@ public class CleanLaunchJob extends BaseCleanJob {
     this.elasticSearchClient = elasticSearchClient;
   }
 
-  @Scheduled(cron = "${rp.environment.variable.clean.launch.cron}")
-  @SchedulerLock(name = "cleanLaunch", lockAtMostFor = "24h")
-  public void execute() {
-    removeLaunches();
-    cleanLogJob.removeLogs();
-  }
+  @Override
+	@Scheduled(cron = "${rp.environment.variable.clean.launch.cron}")
+	@SchedulerLock(name = "cleanLaunch", lockAtMostFor = "24h")
+	public void execute() {
+		removeLaunches();
+		cleanLogJob.removeLogs();
+	}
 
-  private void removeLaunches() {
-    logStart();
-    AtomicInteger counter = new AtomicInteger(0);
-    getProjectsWithAttribute(KEEP_LAUNCHES).forEach((projectId, duration) -> {
-      final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
-      final List<Long> launchIds = getLaunchIds(projectId, lessThanDate);
-      if (!launchIds.isEmpty()) {
-        deleteClusters(launchIds);
+	private void removeLaunches() {
+		AtomicInteger counter = new AtomicInteger(0);
+		getProjectsWithAttribute(KEEP_LAUNCHES).forEach((projectId, duration) -> {
+			final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
+			final List<Long> launchIds = getLaunchIds(projectId, lessThanDate);
+			if (!launchIds.isEmpty()) {
+				deleteClusters(launchIds);
 //				final Long numberOfLaunchElements = countNumberOfLaunchElements(launchIds);
         int deleted = namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY,
             Map.of(IDS_PARAM, launchIds));
@@ -81,11 +81,10 @@ public class CleanLaunchJob extends BaseCleanJob {
 
 //					eventPublisher.publishEvent(new ElementsDeletedEvent(launchIds, projectId, numberOfLaunchElements));
 //					LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
-        }
-      }
-    });
-    logFinish(counter.get());
-  }
+				}
+			}
+		});
+	}
 
   private void deleteLogsFromElasticsearchByLaunchIdsAndProjectId(List<Long> launchIds,
       Long projectId) {

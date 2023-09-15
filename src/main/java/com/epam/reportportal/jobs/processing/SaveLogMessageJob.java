@@ -24,7 +24,8 @@ public class SaveLogMessageJob {
     this.logProcessing = logProcessing;
   }
 
-  @RabbitListener(queues = LOG_MESSAGE_SAVING_QUEUE_NAME, containerFactory = "processingRabbitListenerContainerFactory")
+  @RabbitListener(queues = LOG_MESSAGE_SAVING_QUEUE_NAME,
+      containerFactory = "rabbitListenerContainerFactory")
   public void execute(@Payload LogMessage logMessage) {
     if (Objects.nonNull(logMessage)) {
       this.logProcessing.add(logMessage);
