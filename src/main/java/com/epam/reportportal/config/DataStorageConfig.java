@@ -166,6 +166,7 @@ public class DataStorageConfig {
    *
    * @param blobStore          {@link BlobStore} object
    * @param bucketPrefix       Prefix for bucket name
+   * @param bucketPostfix      Postfix for bucket name
    * @param defaultBucketName  Name of default bucket to use
    * @param featureFlagHandler Instance of {@link FeatureFlagHandler} to check enabled features
    * @return {@link DataStorageService} object

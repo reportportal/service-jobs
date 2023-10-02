@@ -9,7 +9,7 @@ project.ext {
     releaseMode = project.hasProperty("releaseMode")
 }
 
-def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/' + (releaseMode ? getProperty('scripts.version') : 'master')
+def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/' + (releaseMode ? '5.10.0' : 'master')
 
 apply from: "$scriptsUrl/build-docker.gradle"
 apply from: "$scriptsUrl/build-commons.gradle"
@@ -54,9 +54,9 @@ ext['snakeyaml.version'] = '1.31'
 
 dependencies {
     if (releaseMode) {
-        implementation 'com.github.reportportal:commons-events:5.7.3'
+        implementation 'com.github.reportportal:commons-events:5.10.0'
     } else {
-        implementation 'com.github.reportportal:commons-events:35a1246f'
+        implementation 'com.github.reportportal:commons-events:e337f8b7be'
     }
 
     implementation group: 'org.json', name: 'json', version: '20220320'
@@ -68,6 +68,7 @@ dependencies {
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.12.0'
 
 
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -98,7 +99,5 @@ test {
     useJUnitPlatform()
 }
 
-addDockerfileToGit.dependsOn createDockerfile
-beforeReleaseBuild.dependsOn addDockerfileToGit
 publish.dependsOn build
 publish.mustRunAfter build
