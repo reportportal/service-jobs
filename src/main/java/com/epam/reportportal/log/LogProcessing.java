@@ -15,7 +15,7 @@ import org.springframework.util.CollectionUtils;
  * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
 @Component
-@ConditionalOnProperty(prefix = "rp.elasticsearch", name = "host")
+@ConditionalOnProperty(prefix = "rp.es", name = "host")
 public class LogProcessing extends BatchProcessing<LogMessage> {
 
   private final ElasticSearchClient elasticSearchClient;

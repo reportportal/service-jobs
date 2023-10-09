@@ -25,7 +25,7 @@ import org.springframework.web.client.RestTemplate;
  */
 @Primary
 @Service
-@ConditionalOnProperty(prefix = "rp.elasticsearch", name = "host")
+@ConditionalOnProperty(prefix = "rp.es", name = "host")
 public class SimpleElasticSearchClient implements ElasticSearchClient {
 
   protected final Logger LOGGER = LoggerFactory.getLogger(SimpleElasticSearchClient.class);
@@ -33,9 +33,9 @@ public class SimpleElasticSearchClient implements ElasticSearchClient {
   private final String host;
   private final RestTemplate restTemplate;
 
-  public SimpleElasticSearchClient(@Value("${rp.elasticsearch.host}") String host,
-      @Value("${rp.elasticsearch.username:}") String username,
-      @Value("${rp.elasticsearch.password:}") String password) {
+  public SimpleElasticSearchClient(@Value("${rp.es.host}") String host,
+      @Value("${rp.es.username:}") String username,
+      @Value("${rp.es.password:}") String password) {
     restTemplate = new RestTemplate();
 
     if (!username.isEmpty() && !password.isEmpty()) {
