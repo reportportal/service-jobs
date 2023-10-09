@@ -18,13 +18,12 @@ package com.epam.reportportal.config;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import javax.sql.DataSource;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
-
-import javax.sql.DataSource;
 
 /**
  * @author <a href="mailto:ihar_kahadouski@epam.com">Ihar Kahadouski</a>
@@ -34,9 +33,9 @@ import javax.sql.DataSource;
 @EnableTransactionManagement
 public class DataSourceConfig extends HikariConfig {
 
-	@Primary
-	@Bean
-	public DataSource dataSource() {
-		return new HikariDataSource(this);
-	}
+  @Primary
+  @Bean
+  public DataSource dataSource() {
+    return new HikariDataSource(this);
+  }
 }

@@ -1,5 +1,7 @@
 package com.epam.reportportal.analyzer.index;
 
+import static com.epam.reportportal.analyzer.RabbitMqManagementClientTemplate.EXCHANGE_PRIORITY;
+
 import com.epam.reportportal.analyzer.RabbitMqManagementClient;
 import com.epam.reportportal.model.index.CleanIndexByDateRangeRq;
 import com.epam.reportportal.model.index.CleanIndexRq;
@@ -41,44 +43,44 @@ public class IndexerServiceClientImpl implements IndexerServiceClient {
 	// need to be in line with analyzer API, better to fix api and remove it in future.
 	private static final LocalDateTime OLDEST_DATE = LocalDateTime.now().minusYears(10L);
 
-	private final RabbitMqManagementClient rabbitMqManagementClient;
-	private final RabbitTemplate rabbitTemplate;
+  private final RabbitMqManagementClient rabbitMqManagementClient;
+  private final RabbitTemplate rabbitTemplate;
 
-	@Autowired
-	public IndexerServiceClientImpl(RabbitMqManagementClient rabbitMqManagementClient,
-			@Qualifier("analyzerRabbitTemplate") RabbitTemplate rabbitTemplate) {
-		this.rabbitMqManagementClient = rabbitMqManagementClient;
-		this.rabbitTemplate = rabbitTemplate;
-	}
+  @Autowired
+  public IndexerServiceClientImpl(RabbitMqManagementClient rabbitMqManagementClient,
+      @Qualifier("analyzerRabbitTemplate") RabbitTemplate rabbitTemplate) {
+    this.rabbitMqManagementClient = rabbitMqManagementClient;
+    this.rabbitTemplate = rabbitTemplate;
+  }
 
-	@Override
-	public Long cleanIndex(Long index, List<Long> ids) {
-		final Map<Integer, Long> priorityToCleanedLogsCountMapping = rabbitMqManagementClient.getAnalyzerExchangesInfo()
-				.stream()
-				.collect(Collectors.toMap(EXCHANGE_PRIORITY::applyAsInt,
-						exchange -> rabbitTemplate.convertSendAndReceiveAsType(exchange.getName(),
-								CLEAN_ROUTE,
-								new CleanIndexRq(index, ids),
-								new ParameterizedTypeReference<>() {
-								}
-						)
-				));
-		return priorityToCleanedLogsCountMapping.entrySet()
-				.stream()
-				.min(Map.Entry.comparingByKey())
-				.orElseGet(() -> new AbstractMap.SimpleEntry<>(0, 0L))
-				.getValue();
-	}
+  @Override
+  public Long cleanIndex(Long index, List<Long> ids) {
+    final Map<Integer, Long> priorityToCleanedLogsCountMapping = rabbitMqManagementClient.getAnalyzerExchangesInfo()
+        .stream()
+        .collect(Collectors.toMap(EXCHANGE_PRIORITY::applyAsInt,
+            exchange -> rabbitTemplate.convertSendAndReceiveAsType(exchange.getName(),
+                CLEAN_ROUTE,
+                new CleanIndexRq(index, ids),
+                new ParameterizedTypeReference<>() {
+                }
+            )
+        ));
+    return priorityToCleanedLogsCountMapping.entrySet()
+        .stream()
+        .min(Map.Entry.comparingByKey())
+        .orElseGet(() -> new AbstractMap.SimpleEntry<>(0, 0L))
+        .getValue();
+  }
 
-	@Override
-	public void removeFromIndexLessThanLogDate(Long index, LocalDateTime lessThanDate) {
-		sendRangeRemovingMessageToRoute(index, lessThanDate, CLEAN_BY_LOG_DATE_ROUTE);
-	}
+  @Override
+  public void removeFromIndexLessThanLogDate(Long index, LocalDateTime lessThanDate) {
+    sendRangeRemovingMessageToRoute(index, lessThanDate, CLEAN_BY_LOG_DATE_ROUTE);
+  }
 
-	@Override
-	public void removeFromIndexLessThanLaunchDate(Long index, LocalDateTime lessThanDate) {
-		sendRangeRemovingMessageToRoute(index, lessThanDate, CLEAN_BY_LAUNCH_DATE_ROUTE);
-	}
+  @Override
+  public void removeFromIndexLessThanLaunchDate(Long index, LocalDateTime lessThanDate) {
+    sendRangeRemovingMessageToRoute(index, lessThanDate, CLEAN_BY_LAUNCH_DATE_ROUTE);
+  }
 
 	@Override
 	public void deleteIndex(Long index) {
