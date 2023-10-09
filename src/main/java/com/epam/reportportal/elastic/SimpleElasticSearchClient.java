@@ -34,10 +34,13 @@ public class SimpleElasticSearchClient implements ElasticSearchClient {
   private final RestTemplate restTemplate;
 
   public SimpleElasticSearchClient(@Value("${rp.elasticsearch.host}") String host,
-      @Value("${rp.elasticsearch.username}") String username,
-      @Value("${rp.elasticsearch.password}") String password) {
+      @Value("${rp.elasticsearch.username:}") String username,
+      @Value("${rp.elasticsearch.password:}") String password) {
     restTemplate = new RestTemplate();
-    restTemplate.getInterceptors().add(new BasicAuthenticationInterceptor(username, password));
+
+    if (!username.isEmpty() && !password.isEmpty()) {
+      restTemplate.getInterceptors().add(new BasicAuthenticationInterceptor(username, password));
+    }
 
     this.host = host;
   }
@@ -62,9 +65,10 @@ public class SimpleElasticSearchClient implements ElasticSearchClient {
       }
     });
 
-    logsByIndex.forEach((indexName, body) -> {
-      restTemplate.put(host + "/" + indexName + "/_bulk?refresh", getStringHttpEntity(body));
-    });
+    logsByIndex.forEach(
+        (indexName, body) -> restTemplate.put(host + "/" + indexName + "/_bulk?refresh",
+            getStringHttpEntity(body)
+        ));
   }
 
   @Override
@@ -75,7 +79,8 @@ public class SimpleElasticSearchClient implements ElasticSearchClient {
       HttpEntity<String> deleteRequest = getStringHttpEntity(deleteByLaunch.toString());
 
       restTemplate.postForObject(host + "/" + indexName + "/_delete_by_query", deleteRequest,
-          JSONObject.class);
+          JSONObject.class
+      );
     } catch (Exception exception) {
       // to avoid checking of exists stream or not
       LOGGER.info("DELETE logs from stream ES error " + indexName + " " + exception.getMessage());
