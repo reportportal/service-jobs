@@ -18,8 +18,9 @@ public abstract class BaseCleanJob extends BaseJob {
   protected static final String KEEP_SCREENSHOTS = "job.keepScreenshots";
 
   protected final String SELECT_PROJECTS_ATTRIBUTES =
-      "SELECT pa.project_id AS id, pa.value AS attribute_value FROM project_attribute pa "
-          + "JOIN attribute a ON pa.attribute_id = a.id WHERE a.name = ? AND pa.value != '0' AND TRIM(pa.value) != '';";
+      """
+          SELECT pa.project_id AS id, pa.value AS attribute_value FROM project_attribute pa\s
+          JOIN attribute a ON pa.attribute_id = a.id WHERE a.name = ? AND pa.value != '0' AND TRIM(pa.value) != '';""";
 
   public BaseCleanJob(JdbcTemplate jdbcTemplate) {
     super(jdbcTemplate);

@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 public class CalculateAllocatedStorageJob extends BaseJob {
 
   private static final String SELECT_PROJECT_IDS_QUERY = "SELECT id FROM project ORDER BY id";
-  private static final String SELECT_FILE_SIZE_SUM_BY_PROJECT_ID_QUERY = "" +
+  private static final String SELECT_FILE_SIZE_SUM_BY_PROJECT_ID_QUERY =
       "SELECT coalesce(sum(file_size), 0) FROM attachment WHERE attachment.project_id = ?";
   private static final String UPDATE_ALLOCATED_STORAGE_BY_PROJECT_ID_QUERY =
       "UPDATE project SET allocated_storage = ? WHERE id = ?";

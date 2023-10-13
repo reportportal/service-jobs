@@ -1,5 +1,5 @@
 plugins {
-    id 'org.springframework.boot' version '2.7.0'
+    id 'org.springframework.boot' version '2.7.16'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'java'
 }
@@ -9,7 +9,7 @@ project.ext {
     releaseMode = project.hasProperty("releaseMode")
 }
 
-def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/' + (releaseMode ? '5.10.0' : 'master')
+def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/' + (releaseMode ? '5.10.0' : 'EPMRPP-85756')
 
 apply from: "$scriptsUrl/build-docker.gradle"
 apply from: "$scriptsUrl/build-commons.gradle"
@@ -18,10 +18,10 @@ apply from: "$scriptsUrl/build-info.gradle"
 apply from: "$scriptsUrl/release-service.gradle"
 apply from: "$scriptsUrl/signing.gradle"
 
-sourceCompatibility = '11'
+sourceCompatibility = '17'
 
 wrapper {
-    gradleVersion = '6.8'
+    gradleVersion = '8.4'
 }
 
 bootJar {
@@ -53,11 +53,6 @@ ext['snakeyaml.version'] = '1.31'
 //
 
 dependencies {
-    if (releaseMode) {
-        implementation 'com.github.reportportal:commons-events:5.10.0'
-    } else {
-        implementation 'com.github.reportportal:commons-events:e337f8b7be'
-    }
 
     implementation group: 'org.json', name: 'json', version: '20220320'
 
@@ -81,17 +76,17 @@ dependencies {
 //    https://avd.aquasec.com/nvd/cve-2020-8908
 //    implementation 'com.google.guava:guava:30.0-jre';
 
-    compile "com.rabbitmq:http-client:2.1.0.RELEASE"
+    implementation "com.rabbitmq:http-client:2.1.0.RELEASE"
     //Fix CVE
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
 
     runtimeOnly 'org.postgresql:postgresql'
 
-    testCompile 'org.junit.jupiter:junit-jupiter:5.5.2'
-    testCompile 'org.junit.jupiter:junit-jupiter-api:5.5.2'
-    testCompile 'org.junit.jupiter:junit-jupiter-params:5.5.2'
-    testCompile 'org.junit.jupiter:junit-jupiter-engine:5.5.2'
-    testCompile 'org.mockito:mockito-junit-jupiter:3.1.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.5.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.5.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.5.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.5.2'
+    testImplementation 'org.mockito:mockito-junit-jupiter:3.1.0'
 
 }
 

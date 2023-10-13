@@ -27,8 +27,9 @@ public class CleanStorageJob extends BaseJob {
 
   private static final String ROLLBACK_ERROR_MESSAGE = "Rollback deleting transaction.";
   private static final String SELECT_AND_DELETE_DATA_CHUNK_QUERY =
-      "DELETE FROM attachment_deletion WHERE id IN "
-          + "(SELECT id FROM attachment_deletion ORDER BY id LIMIT ?) RETURNING *";
+      """
+          DELETE FROM attachment_deletion WHERE id IN\s
+          (SELECT id FROM attachment_deletion ORDER BY id LIMIT ?) RETURNING *""";
 
   private static final int MAX_BATCH_SIZE = 200000;
   private final DataStorageService storageService;
