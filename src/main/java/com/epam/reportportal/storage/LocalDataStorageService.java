@@ -16,7 +16,9 @@
 
 package com.epam.reportportal.storage;
 
+import java.io.File;
 import java.util.List;
+import javax.lang.model.type.ErrorType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +48,16 @@ public class LocalDataStorageService implements DataStorageService {
         LOGGER.error("Unable to delete file '{}'", path, e);
         throw e;
       }
+    }
+  }
+
+  @Override
+  public void deleteContainer(String containerName) throws IOException{
+    try {
+      Files.deleteIfExists(Paths.get(storageRootPath, containerName));
+    } catch (IOException e) {
+      LOGGER.error("Unable to delete container '{}'", containerName, e);
+      throw e;
     }
   }
 }
