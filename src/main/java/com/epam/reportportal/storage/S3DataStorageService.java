@@ -43,6 +43,8 @@ public class S3DataStorageService implements DataStorageService {
 
   private final FeatureFlagHandler featureFlagHandler;
 
+  private static final String PROJECT_PREFIX = "/project-data/";
+
   /**
    * Creates instance of {@link S3DataStorageService}.
    *
@@ -89,6 +91,15 @@ public class S3DataStorageService implements DataStorageService {
     }
   }
 
+  @Override
+  public void deleteContainer(String containerName) {
+    try {
+      blobStore.deleteContainer(bucketPrefix + containerName + bucketPostfix);
+    } catch (Exception e) {
+      LOGGER.warn("Exception {} is occurred during deleting container", e.getMessage());
+    }
+  }
+
   private String retrievePath(Path path, int beginIndex, int endIndex) {
     return String.valueOf(path.subpath(beginIndex, endIndex));
   }
@@ -100,4 +111,5 @@ public class S3DataStorageService implements DataStorageService {
       LOGGER.warn("Exception {} is occurred during deleting file", e.getMessage());
     }
   }
+
 }

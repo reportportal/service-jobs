@@ -23,16 +23,21 @@ import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
 import com.epam.reportportal.model.activity.event.UnassignUserEvent;
 import com.epam.reportportal.model.activity.event.UserDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
+import com.epam.reportportal.storage.DataStorageService;
+import com.epam.reportportal.utils.FeatureFlag;
+import com.epam.reportportal.utils.FeatureFlagHandler;
 import com.epam.reportportal.utils.ValidationUtil;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.jclouds.blobstore.BlobStore;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,8 +57,7 @@ import org.springframework.util.CollectionUtils;
  * @author Andrei Piankouski
  */
 @Service
-@ConditionalOnProperty(prefix = "rp.environment.variable",
-    name = "clean.expiredUser.retentionPeriod")
+@ConditionalOnProperty(prefix = "rp.environment.variable", name = "clean.expiredUser.retentionPeriod")
 public class DeleteExpiredUsersJob extends BaseJob {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(DeleteExpiredUsersJob.class);
@@ -64,32 +68,21 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private static final String USER_DELETION_TEMPLATE = "userDeletionNotification";
 
-  private static final String SELECT_EXPIRED_USERS = "SELECT u.id AS user_id, "
-      + "p.id AS project_id, u.email as user_email "
-      + "FROM users u "
-      + "LEFT JOIN api_keys ak ON u.id = ak.user_id "
-      + "LEFT JOIN project p ON u.login || '_personal' = p.name AND p.project_type = 'PERSONAL' "
-      + "WHERE (u.metadata->'metadata'->>'last_login')::BIGINT <= :retentionPeriod "
-      + "AND ( "
-      + "ak.user_id IS NULL "
-      + "OR (EXTRACT(EPOCH FROM ak.last_used_at) * 1000)::BIGINT <= :retentionPeriod "
-      + "OR NOT EXISTS (SELECT 1 FROM api_keys WHERE user_id = u.id AND last_used_at IS NOT NULL) "
-      + ") "
-      + "AND u.role != 'ADMINISTRATOR' "
-      + "GROUP BY u.id, p.id";
+  private static final String SELECT_EXPIRED_USERS =
+      "SELECT u.id AS user_id, " + "p.id AS project_id, u.email AS user_email " + "FROM users u "
+          + "LEFT JOIN api_keys ak ON u.id = ak.user_id "
+          + "LEFT JOIN project p ON u.login || '_personal' = p.name AND p.project_type = 'PERSONAL' "
+          + "WHERE (u.metadata->'metadata'->>'last_login')::BIGINT <= :retentionPeriod " + "AND ( "
+          + "ak.user_id IS NULL "
+          + "OR (EXTRACT(EPOCH FROM ak.last_used_at) * 1000)::BIGINT <= :retentionPeriod "
+          + "OR NOT EXISTS (SELECT 1 FROM api_keys WHERE user_id = u.id AND last_used_at IS NOT NULL) "
+          + ") " + "AND u.role != 'ADMINISTRATOR' " + "GROUP BY u.id, p.id";
 
-  private static final String MOVE_ATTACHMENTS_TO_DELETE =
-      "WITH moved_rows AS (DELETE FROM attachment "
-          + "WHERE project_id = :projectId RETURNING id, file_id, thumbnail_id, creation_date) "
-          + "INSERT INTO attachment_deletion "
-          + "(id, file_id, thumbnail_id, creation_attachment_date, deletion_date) "
-          + "SELECT id, file_id, thumbnail_id, creation_date, NOW() FROM moved_rows";
+  private static final String DELETE_ATTACHMENTS_BY_PROJECT =
+      "DELETE FROM attachment WHERE project_id = :projectId RETURNING file_id";
 
   private static final String DELETE_PROJECT_ISSUE_TYPES =
-      "DELETE FROM issue_type "
-          + "WHERE id IN ("
-          + "    SELECT it.id "
-          + "    FROM issue_type it "
+      "DELETE FROM issue_type " + "WHERE id IN (" + "    SELECT it.id " + "    FROM issue_type it "
           + "    JOIN issue_type_project itp ON it.id = itp.issue_type_id "
           + "    WHERE itp.project_id = :projectId "
           + "    AND it.locator NOT IN ('pb001', 'ab001', 'si001', 'ti001', 'nd001'))";
@@ -99,33 +92,32 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private static final String DELETE_PROJECTS_BY_ID_LIST =
       "DELETE FROM project WHERE id IN (:projectIds)";
 
-  private static final String FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS = "SELECT p.id "
-      + "FROM project_user pu "
-      + "JOIN project p ON pu.project_id = p.id "
-      + "WHERE p.project_type != 'PERSONAL' AND pu.user_id IN (:userIds)";
+  private static final String FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS =
+      "SELECT p.id " + "FROM project_user pu " + "JOIN project p ON pu.project_id = p.id "
+          + "WHERE p.project_type != 'PERSONAL' AND pu.user_id IN (:userIds)";
 
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
   private Long retentionPeriod;
 
-  private final BlobStore blobStore;
+  private final DataStorageService dataStorageService;
 
   private final IndexerServiceClient indexerServiceClient;
 
-  private final MessageBus messageBus;
+  private final FeatureFlagHandler featureFlagHandler;
 
-  @Value("${datastore.bucketPrefix}")
-  private String bucketPrefix;
+  private final MessageBus messageBus;
 
   @Autowired
   public DeleteExpiredUsersJob(JdbcTemplate jdbcTemplate,
-      NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-      BlobStore blobStore, IndexerServiceClient indexerServiceClient,
-      MessageBus messageBus) {
+      NamedParameterJdbcTemplate namedParameterJdbcTemplate, DataStorageService dataStorageService,
+      IndexerServiceClient indexerServiceClient, MessageBus messageBus,
+      FeatureFlagHandler featureFlagHandler) {
     super(jdbcTemplate);
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
-    this.blobStore = blobStore;
+    this.dataStorageService = dataStorageService;
     this.indexerServiceClient = indexerServiceClient;
     this.messageBus = messageBus;
+    this.featureFlagHandler = featureFlagHandler;
   }
 
   @Override
@@ -166,10 +158,10 @@ public class DeleteExpiredUsersJob extends BaseJob {
   }
 
   private List<Long> findNonPersonalProjectIdsByUserIds(List<Long> userIds) {
-    return CollectionUtils.isEmpty(userIds)
-        ? Collections.emptyList()
-        : namedParameterJdbcTemplate.queryForList(FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS,
-            Map.of("userIds", userIds), Long.class);
+    return CollectionUtils.isEmpty(userIds) ? Collections.emptyList() :
+        namedParameterJdbcTemplate.queryForList(FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS,
+            Map.of("userIds", userIds), Long.class
+        );
   }
 
   private List<UserProject> findUsersAndPersonalProjects() {
@@ -188,13 +180,17 @@ public class DeleteExpiredUsersJob extends BaseJob {
   }
 
   private void deleteProjectAssociatedData(Long projectId) {
-    deleteAttachmentsByProjectId(projectId);
+    List<String> paths = deleteAttachmentsByProjectId(projectId);
     deleteProjectIssueTypes(projectId);
     indexerServiceClient.removeSuggest(projectId);
     try {
-      blobStore.deleteContainer(bucketPrefix + projectId);
+      if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
+        dataStorageService.deleteAll(paths.stream().map(this::decode).collect(Collectors.toList()));
+      } else {
+        dataStorageService.deleteContainer(projectId.toString());
+      }
     } catch (Exception e) {
-      LOGGER.warn("Cannot delete attachments bucket " + bucketPrefix + projectId);
+      LOGGER.warn("Cannot delete attachments bucket for project {} ", projectId);
     }
     indexerServiceClient.deleteIndex(projectId);
   }
@@ -214,10 +210,9 @@ public class DeleteExpiredUsersJob extends BaseJob {
     namedParameterJdbcTemplate.update(DELETE_PROJECT_ISSUE_TYPES, params);
   }
 
-  private void deleteAttachmentsByProjectId(Long projectId) {
-    MapSqlParameterSource params = new MapSqlParameterSource();
-    params.addValue("projectId", projectId);
-    namedParameterJdbcTemplate.update(MOVE_ATTACHMENTS_TO_DELETE, params);
+  private List<String> deleteAttachmentsByProjectId(Long projectId) {
+    return namedParameterJdbcTemplate.queryForList(
+        DELETE_ATTACHMENTS_BY_PROJECT, Map.of("projectId", projectId), String.class);
   }
 
   private void deleteProjectsByIds(List<Long> projectIds) {
@@ -275,5 +270,10 @@ public class DeleteExpiredUsersJob extends BaseJob {
     public void setProjectId(long projectId) {
       this.projectId = projectId;
     }
+  }
+
+  private String decode(String data) {
+    return StringUtils.isEmpty(data) ? data :
+        new String(Base64.getUrlDecoder().decode(data), StandardCharsets.UTF_8);
   }
 }
