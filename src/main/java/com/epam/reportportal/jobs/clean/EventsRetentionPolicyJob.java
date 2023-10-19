@@ -37,9 +37,9 @@ import org.springframework.stereotype.Service;
     name = "clean.events.retentionPeriod")
 public class EventsRetentionPolicyJob extends BaseJob {
 
-  private static final String DELETE_ACTIVITY_BY_RETENTION =
-      "DELETE FROM activity "
-          + "WHERE created_at < NOW() - (:retentionPeriod * interval '1 day')";
+  private static final String DELETE_ACTIVITY_BY_RETENTION = """
+      DELETE FROM activity\s
+      WHERE created_at < NOW() - (:retentionPeriod * interval '1 day')""";
 
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 

@@ -57,7 +57,8 @@ import org.springframework.util.CollectionUtils;
  * @author Andrei Piankouski
  */
 @Service
-@ConditionalOnProperty(prefix = "rp.environment.variable", name = "clean.expiredUser.retentionPeriod")
+@ConditionalOnProperty(prefix = "rp.environment.variable",
+    name = "clean.expiredUser.retentionPeriod")
 public class DeleteExpiredUsersJob extends BaseJob {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(DeleteExpiredUsersJob.class);
@@ -68,33 +69,49 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private static final String USER_DELETION_TEMPLATE = "userDeletionNotification";
 
-  private static final String SELECT_EXPIRED_USERS =
-      "SELECT u.id AS user_id, " + "p.id AS project_id, u.email AS user_email " + "FROM users u "
-          + "LEFT JOIN api_keys ak ON u.id = ak.user_id "
-          + "LEFT JOIN project p ON u.login || '_personal' = p.name AND p.project_type = 'PERSONAL' "
-          + "WHERE (u.metadata->'metadata'->>'last_login')::BIGINT <= :retentionPeriod " + "AND ( "
-          + "ak.user_id IS NULL "
-          + "OR (EXTRACT(EPOCH FROM ak.last_used_at) * 1000)::BIGINT <= :retentionPeriod "
-          + "OR NOT EXISTS (SELECT 1 FROM api_keys WHERE user_id = u.id AND last_used_at IS NOT NULL) "
-          + ") " + "AND u.role != 'ADMINISTRATOR' " + "GROUP BY u.id, p.id";
+  private static final String SELECT_EXPIRED_USERS = """
+      SELECT u.id AS user_id,\s
+      p.id AS project_id, u.email as user_email\s
+      FROM users u\s
+      LEFT JOIN api_keys ak ON u.id = ak.user_id\s
+      LEFT JOIN project p ON u.login || '_personal' = p.name AND p.project_type = 'PERSONAL'\s
+      WHERE (u.metadata->'metadata'->>'last_login')::BIGINT <= :retentionPeriod\s
+      AND (\s
+      ak.user_id IS NULL\s
+      OR (EXTRACT(EPOCH FROM ak.last_used_at) * 1000)::BIGINT <= :retentionPeriod\s
+      OR NOT EXISTS (SELECT 1 FROM api_keys WHERE user_id = u.id AND last_used_at IS NOT NULL)\s
+      )\s
+      AND u.role != 'ADMINISTRATOR'\s
+      GROUP BY u.id, p.id""";
 
   private static final String DELETE_ATTACHMENTS_BY_PROJECT =
-      "DELETE FROM attachment WHERE project_id = :projectId RETURNING file_id";
+      """
+         WITH moved_rows AS (DELETE FROM attachment\s
+         WHERE project_id = :projectId RETURNING id, file_id, thumbnail_id, creation_date)\s
+         INSERT INTO attachment_deletion\s
+         (id, file_id, thumbnail_id, creation_attachment_date, deletion_date)\s
+         SELECT id, file_id, thumbnail_id, creation_date, NOW() FROM moved_rows""";
 
   private static final String DELETE_PROJECT_ISSUE_TYPES =
-      "DELETE FROM issue_type " + "WHERE id IN (" + "    SELECT it.id " + "    FROM issue_type it "
-          + "    JOIN issue_type_project itp ON it.id = itp.issue_type_id "
-          + "    WHERE itp.project_id = :projectId "
-          + "    AND it.locator NOT IN ('pb001', 'ab001', 'si001', 'ti001', 'nd001'))";
+      """
+          DELETE FROM issue_type\s
+          WHERE id IN (
+              SELECT it.id\s
+              FROM issue_type it\s
+              JOIN issue_type_project itp ON it.id = itp.issue_type_id\s
+              WHERE itp.project_id = :projectId\s
+              AND it.locator NOT IN ('pb001', 'ab001', 'si001', 'ti001', 'nd001'))""";
 
   private static final String DELETE_USERS = "DELETE FROM users WHERE id IN (:userIds)";
 
   private static final String DELETE_PROJECTS_BY_ID_LIST =
       "DELETE FROM project WHERE id IN (:projectIds)";
 
-  private static final String FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS =
-      "SELECT p.id " + "FROM project_user pu " + "JOIN project p ON pu.project_id = p.id "
-          + "WHERE p.project_type != 'PERSONAL' AND pu.user_id IN (:userIds)";
+  private static final String FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS = """
+      SELECT p.id\s
+      FROM project_user pu\s
+      JOIN project p ON pu.project_id = p.id\s
+      WHERE p.project_type != 'PERSONAL' AND pu.user_id IN (:userIds)""";
 
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
   private Long retentionPeriod;
