@@ -84,7 +84,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
       AND u.role != 'ADMINISTRATOR'\s
       GROUP BY u.id, p.id""";
 
-  private static final String MOVE_ATTACHMENTS_TO_DELETE =
+  private static final String DELETE_ATTACHMENTS_BY_PROJECT =
       """
          WITH moved_rows AS (DELETE FROM attachment\s
          WHERE project_id = :projectId RETURNING id, file_id, thumbnail_id, creation_date)\s

@@ -18,7 +18,7 @@ apply from: "$scriptsUrl/build-info.gradle"
 apply from: "$scriptsUrl/release-service.gradle"
 apply from: "$scriptsUrl/signing.gradle"
 
-sourceCompatibility = '17'
+sourceCompatibility = '21'
 
 wrapper {
     gradleVersion = '8.4'
