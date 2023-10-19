@@ -23,16 +23,21 @@ import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
 import com.epam.reportportal.model.activity.event.UnassignUserEvent;
 import com.epam.reportportal.model.activity.event.UserDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
+import com.epam.reportportal.storage.DataStorageService;
+import com.epam.reportportal.utils.FeatureFlag;
+import com.epam.reportportal.utils.FeatureFlagHandler;
 import com.epam.reportportal.utils.ValidationUtil;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.jclouds.blobstore.BlobStore;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -111,25 +116,25 @@ public class DeleteExpiredUsersJob extends BaseJob {
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
   private Long retentionPeriod;
 
-  private final BlobStore blobStore;
+  private final DataStorageService dataStorageService;
 
   private final IndexerServiceClient indexerServiceClient;
 
-  private final MessageBus messageBus;
+  private final FeatureFlagHandler featureFlagHandler;
 
-  @Value("${datastore.bucketPrefix}")
-  private String bucketPrefix;
+  private final MessageBus messageBus;
 
   @Autowired
   public DeleteExpiredUsersJob(JdbcTemplate jdbcTemplate,
-      NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-      BlobStore blobStore, IndexerServiceClient indexerServiceClient,
-      MessageBus messageBus) {
+      NamedParameterJdbcTemplate namedParameterJdbcTemplate, DataStorageService dataStorageService,
+      IndexerServiceClient indexerServiceClient, MessageBus messageBus,
+      FeatureFlagHandler featureFlagHandler) {
     super(jdbcTemplate);
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
-    this.blobStore = blobStore;
+    this.dataStorageService = dataStorageService;
     this.indexerServiceClient = indexerServiceClient;
     this.messageBus = messageBus;
+    this.featureFlagHandler = featureFlagHandler;
   }
 
   @Override
@@ -170,10 +175,10 @@ public class DeleteExpiredUsersJob extends BaseJob {
   }
 
   private List<Long> findNonPersonalProjectIdsByUserIds(List<Long> userIds) {
-    return CollectionUtils.isEmpty(userIds)
-        ? Collections.emptyList()
-        : namedParameterJdbcTemplate.queryForList(FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS,
-            Map.of("userIds", userIds), Long.class);
+    return CollectionUtils.isEmpty(userIds) ? Collections.emptyList() :
+        namedParameterJdbcTemplate.queryForList(FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS,
+            Map.of("userIds", userIds), Long.class
+        );
   }
 
   private List<UserProject> findUsersAndPersonalProjects() {
@@ -192,13 +197,17 @@ public class DeleteExpiredUsersJob extends BaseJob {
   }
 
   private void deleteProjectAssociatedData(Long projectId) {
-    deleteAttachmentsByProjectId(projectId);
+    List<String> paths = deleteAttachmentsByProjectId(projectId);
     deleteProjectIssueTypes(projectId);
     indexerServiceClient.removeSuggest(projectId);
     try {
-      blobStore.deleteContainer(bucketPrefix + projectId);
+      if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
+        dataStorageService.deleteAll(paths.stream().map(this::decode).collect(Collectors.toList()));
+      } else {
+        dataStorageService.deleteContainer(projectId.toString());
+      }
     } catch (Exception e) {
-      LOGGER.warn("Cannot delete attachments bucket " + bucketPrefix + projectId);
+      LOGGER.warn("Cannot delete attachments bucket for project {} ", projectId);
     }
     indexerServiceClient.deleteIndex(projectId);
   }
@@ -218,10 +227,9 @@ public class DeleteExpiredUsersJob extends BaseJob {
     namedParameterJdbcTemplate.update(DELETE_PROJECT_ISSUE_TYPES, params);
   }
 
-  private void deleteAttachmentsByProjectId(Long projectId) {
-    MapSqlParameterSource params = new MapSqlParameterSource();
-    params.addValue("projectId", projectId);
-    namedParameterJdbcTemplate.update(MOVE_ATTACHMENTS_TO_DELETE, params);
+  private List<String> deleteAttachmentsByProjectId(Long projectId) {
+    return namedParameterJdbcTemplate.queryForList(
+        DELETE_ATTACHMENTS_BY_PROJECT, Map.of("projectId", projectId), String.class);
   }
 
   private void deleteProjectsByIds(List<Long> projectIds) {
@@ -279,5 +287,10 @@ public class DeleteExpiredUsersJob extends BaseJob {
     public void setProjectId(long projectId) {
       this.projectId = projectId;
     }
+  }
+
+  private String decode(String data) {
+    return StringUtils.isEmpty(data) ? data :
+        new String(Base64.getUrlDecoder().decode(data), StandardCharsets.UTF_8);
   }
 }
