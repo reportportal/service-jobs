@@ -57,8 +57,7 @@ import org.springframework.util.CollectionUtils;
  * @author Andrei Piankouski
  */
 @Service
-@ConditionalOnProperty(prefix = "rp.environment.variable",
-    name = "clean.expiredUser.retentionPeriod")
+@ConditionalOnProperty(prefix = "rp.environment.variable", name = "clean.expiredUser.retentionPeriod")
 public class DeleteExpiredUsersJob extends BaseJob {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(DeleteExpiredUsersJob.class);
@@ -71,7 +70,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private static final String SELECT_EXPIRED_USERS = """
       SELECT u.id AS user_id,\s
-      p.id AS project_id, u.email as user_email\s
+      p.id AS project_id, u.email AS user_email\s
       FROM users u\s
       LEFT JOIN api_keys ak ON u.id = ak.user_id\s
       LEFT JOIN project p ON u.login || '_personal' = p.name AND p.project_type = 'PERSONAL'\s
@@ -85,22 +84,16 @@ public class DeleteExpiredUsersJob extends BaseJob {
       GROUP BY u.id, p.id""";
 
   private static final String DELETE_ATTACHMENTS_BY_PROJECT =
-      """
-         WITH moved_rows AS (DELETE FROM attachment\s
-         WHERE project_id = :projectId RETURNING id, file_id, thumbnail_id, creation_date)\s
-         INSERT INTO attachment_deletion\s
-         (id, file_id, thumbnail_id, creation_attachment_date, deletion_date)\s
-         SELECT id, file_id, thumbnail_id, creation_date, NOW() FROM moved_rows""";
+      "DELETE FROM attachment WHERE project_id = :projectId RETURNING file_id";
 
-  private static final String DELETE_PROJECT_ISSUE_TYPES =
-      """
-          DELETE FROM issue_type\s
-          WHERE id IN (
-              SELECT it.id\s
-              FROM issue_type it\s
-              JOIN issue_type_project itp ON it.id = itp.issue_type_id\s
-              WHERE itp.project_id = :projectId\s
-              AND it.locator NOT IN ('pb001', 'ab001', 'si001', 'ti001', 'nd001'))""";
+  private static final String DELETE_PROJECT_ISSUE_TYPES = """
+      DELETE FROM issue_type\s
+      WHERE id IN (
+          SELECT it.id\s
+          FROM issue_type it\s
+          JOIN issue_type_project itp ON it.id = itp.issue_type_id\s
+          WHERE itp.project_id = :projectId\s
+          AND it.locator NOT IN ('pb001', 'ab001', 'si001', 'ti001', 'nd001'))""";
 
   private static final String DELETE_USERS = "DELETE FROM users WHERE id IN (:userIds)";
 
