@@ -83,8 +83,12 @@ public class DeleteExpiredUsersJob extends BaseJob {
       AND u.role != 'ADMINISTRATOR'\s
       GROUP BY u.id, p.id""";
 
-  private static final String DELETE_ATTACHMENTS_BY_PROJECT =
-      "DELETE FROM attachment WHERE project_id = :projectId RETURNING file_id";
+  private static final String DELETE_ATTACHMENTS_BY_PROJECT = """
+      WITH moved_rows AS (DELETE FROM attachment\s
+      WHERE project_id = :projectId RETURNING id, file_id, thumbnail_id, creation_date)\s
+      INSERT INTO attachment_deletion\s
+      (id, file_id, thumbnail_id, creation_attachment_date, deletion_date)\s
+      SELECT id, file_id, thumbnail_id, creation_date, NOW() FROM moved_rows""";
 
   private static final String DELETE_PROJECT_ISSUE_TYPES = """
       DELETE FROM issue_type\s
@@ -190,13 +194,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
   }
 
   private void deleteProjectAssociatedData(Long projectId) {
-    List<String> paths = deleteAttachmentsByProjectId(projectId);
+    deleteAttachmentsByProjectId(projectId);
     deleteProjectIssueTypes(projectId);
     indexerServiceClient.removeSuggest(projectId);
     try {
-      if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-        dataStorageService.deleteAll(paths.stream().map(this::decode).collect(Collectors.toList()));
-      } else {
+      if (!featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
         dataStorageService.deleteContainer(projectId.toString());
       }
     } catch (Exception e) {
@@ -220,9 +222,10 @@ public class DeleteExpiredUsersJob extends BaseJob {
     namedParameterJdbcTemplate.update(DELETE_PROJECT_ISSUE_TYPES, params);
   }
 
-  private List<String> deleteAttachmentsByProjectId(Long projectId) {
-    return namedParameterJdbcTemplate.queryForList(
-        DELETE_ATTACHMENTS_BY_PROJECT, Map.of("projectId", projectId), String.class);
+  private void deleteAttachmentsByProjectId(Long projectId) {
+    MapSqlParameterSource params = new MapSqlParameterSource();
+    params.addValue("projectId", projectId);
+    namedParameterJdbcTemplate.update(DELETE_ATTACHMENTS_BY_PROJECT, params);
   }
 
   private void deleteProjectsByIds(List<Long> projectIds) {
