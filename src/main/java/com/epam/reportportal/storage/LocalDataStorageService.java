@@ -18,6 +18,9 @@ package com.epam.reportportal.storage;
 
 import com.epam.reportportal.utils.FeatureFlag;
 import com.epam.reportportal.utils.FeatureFlagHandler;
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -40,11 +43,17 @@ public class LocalDataStorageService implements DataStorageService {
 
   private final FeatureFlagHandler featureFlagHandler;
 
+  private final String baseDirectory;
+
+  private static final String PROJECT_PREFIX = "project-data";
+
   private static final String SINGLE_BUCKET_NAME = "store";
 
-  public LocalDataStorageService(BlobStore blobStore, FeatureFlagHandler featureFlagHandler) {
+  public LocalDataStorageService(BlobStore blobStore, FeatureFlagHandler featureFlagHandler,
+      String baseDirectory) {
     this.blobStore = blobStore;
     this.featureFlagHandler = featureFlagHandler;
+    this.baseDirectory = baseDirectory;
   }
 
   @Override
@@ -53,24 +62,17 @@ public class LocalDataStorageService implements DataStorageService {
       return;
     }
     if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-      removeFiles(SINGLE_BUCKET_NAME, paths);
-    } else {
-      Map<String, List<String>> bucketPathMap = new HashMap<>();
-      for (String path : paths) {
-        Path targetPath = Paths.get(path);
-        int nameCount = targetPath.getNameCount();
-        String bucket = retrievePath(targetPath, 0, 1);
-        String cutPath = retrievePath(targetPath, 1, nameCount);
-        if (bucketPathMap.containsKey(bucket)) {
-          bucketPathMap.get(bucket).add(cutPath);
-        } else {
-          List<String> bucketPaths = new ArrayList<>();
-          bucketPaths.add(cutPath);
-          bucketPathMap.put(bucket, bucketPaths);
-        }
+      Map<String, List<String>> bucketPathMap = retrieveBucketPathMap(paths);
+      for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
+        removeFiles(SINGLE_BUCKET_NAME, bucketPaths.getValue());
+        deleteEmptyDirs(
+            Paths.get(baseDirectory, SINGLE_BUCKET_NAME, PROJECT_PREFIX, bucketPaths.getKey()));
       }
+    } else {
+      Map<String, List<String>> bucketPathMap = retrieveBucketPathMap(paths);
       for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
         removeFiles(bucketPaths.getKey(), bucketPaths.getValue());
+        deleteEmptyDirs(Paths.get(baseDirectory, bucketPaths.getKey()));
       }
     }
   }
@@ -84,6 +86,25 @@ public class LocalDataStorageService implements DataStorageService {
     }
   }
 
+  private Map<String, List<String>> retrieveBucketPathMap(List<String> paths) {
+    Map<String, List<String>> bucketPathMap = new HashMap<>();
+    for (String path : paths) {
+      Path targetPath = Paths.get(path);
+      int nameCount = targetPath.getNameCount();
+      String bucket = retrievePath(targetPath, 0, 1);
+      String cutPath = retrievePath(targetPath, 1, nameCount);
+      if (bucketPathMap.containsKey(bucket)) {
+        bucketPathMap.get(bucket).add(cutPath);
+      } else {
+        List<String> bucketPaths = new ArrayList<>();
+        bucketPaths.add(cutPath);
+        bucketPathMap.put(bucket, bucketPaths);
+      }
+    }
+
+    return bucketPathMap;
+  }
+
   private String retrievePath(Path path, int beginIndex, int endIndex) {
     return String.valueOf(path.subpath(beginIndex, endIndex));
   }
@@ -93,6 +114,39 @@ public class LocalDataStorageService implements DataStorageService {
       blobStore.removeBlobs(bucketName, paths);
     } catch (Exception e) {
       LOGGER.warn("Exception {} is occurred during deleting file", e.getMessage());
+    }
+  }
+
+  private void deleteEmptyDirs(Path dir) {
+    if (!Files.isDirectory(dir)) {
+      return;
+    }
+
+    // List all files/directories in the given directory
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+      for (Path entry : stream) {
+        deleteEmptyDirs(entry);
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Exception {} is occurred during checking directory", e.getMessage());
+    }
+
+    // Delete the directory if empty
+    try {
+      if (isDirectoryEmpty(dir)) {
+        Files.delete(dir);
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Exception {} is occurred during deleting empty directory", e.getMessage());
+    }
+  }
+
+  private boolean isDirectoryEmpty(Path dir) {
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+      return !stream.iterator().hasNext();
+    } catch (IOException e) {
+      LOGGER.warn("Exception {} is occurred during checking directory", e.getMessage());
+      return false;
     }
   }
 
