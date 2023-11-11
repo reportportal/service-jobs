@@ -23,21 +23,15 @@ import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
 import com.epam.reportportal.model.activity.event.UnassignUserEvent;
 import com.epam.reportportal.model.activity.event.UserDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
-import com.epam.reportportal.storage.DataStorageService;
-import com.epam.reportportal.utils.FeatureFlag;
-import com.epam.reportportal.utils.FeatureFlagHandler;
 import com.epam.reportportal.utils.ValidationUtil;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -113,25 +107,18 @@ public class DeleteExpiredUsersJob extends BaseJob {
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
   private Long retentionPeriod;
 
-  private final DataStorageService dataStorageService;
-
   private final IndexerServiceClient indexerServiceClient;
-
-  private final FeatureFlagHandler featureFlagHandler;
 
   private final MessageBus messageBus;
 
   @Autowired
   public DeleteExpiredUsersJob(JdbcTemplate jdbcTemplate,
-      NamedParameterJdbcTemplate namedParameterJdbcTemplate, DataStorageService dataStorageService,
-      IndexerServiceClient indexerServiceClient, MessageBus messageBus,
-      FeatureFlagHandler featureFlagHandler) {
+      NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+      IndexerServiceClient indexerServiceClient, MessageBus messageBus) {
     super(jdbcTemplate);
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
-    this.dataStorageService = dataStorageService;
     this.indexerServiceClient = indexerServiceClient;
     this.messageBus = messageBus;
-    this.featureFlagHandler = featureFlagHandler;
   }
 
   @Override
@@ -197,13 +184,6 @@ public class DeleteExpiredUsersJob extends BaseJob {
     deleteAttachmentsByProjectId(projectId);
     deleteProjectIssueTypes(projectId);
     indexerServiceClient.removeSuggest(projectId);
-    try {
-      if (!featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-        dataStorageService.deleteContainer(projectId.toString());
-      }
-    } catch (Exception e) {
-      LOGGER.warn("Cannot delete attachments bucket for project {} ", projectId);
-    }
     indexerServiceClient.deleteIndex(projectId);
   }
 
@@ -283,10 +263,5 @@ public class DeleteExpiredUsersJob extends BaseJob {
     public void setProjectId(long projectId) {
       this.projectId = projectId;
     }
-  }
-
-  private String decode(String data) {
-    return StringUtils.isEmpty(data) ? data :
-        new String(Base64.getUrlDecoder().decode(data), StandardCharsets.UTF_8);
   }
 }
