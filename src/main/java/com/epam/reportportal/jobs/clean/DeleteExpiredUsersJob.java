@@ -23,6 +23,8 @@ import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
 import com.epam.reportportal.model.activity.event.UnassignUserEvent;
 import com.epam.reportportal.model.activity.event.UserDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
+import com.epam.reportportal.storage.DataStorageService;
+import com.epam.reportportal.utils.DataStorageUtils;
 import com.epam.reportportal.utils.ValidationUtil;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -95,6 +97,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private static final String DELETE_USERS = "DELETE FROM users WHERE id IN (:userIds)";
 
+  private static final String SELECT_USERS_ATTACHMENTS = """
+         SELECT attachment FROM users WHERE (id IN (:userIds) and attachment is not null)\s
+         UNION\s
+         SELECT attachment_thumbnail FROM users WHERE (id IN (:userIds) and attachment_thumbnail is not null)""";
+
   private static final String DELETE_PROJECTS_BY_ID_LIST =
       "DELETE FROM project WHERE id IN (:projectIds)";
 
@@ -106,6 +113,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
   private Long retentionPeriod;
+  private final DataStorageService dataStorageService;
 
   private final IndexerServiceClient indexerServiceClient;
 
@@ -114,9 +122,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
   @Autowired
   public DeleteExpiredUsersJob(JdbcTemplate jdbcTemplate,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-      IndexerServiceClient indexerServiceClient, MessageBus messageBus) {
+      DataStorageService dataStorageService, IndexerServiceClient indexerServiceClient,
+      MessageBus messageBus) {
     super(jdbcTemplate);
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+    this.dataStorageService = dataStorageService;
     this.indexerServiceClient = indexerServiceClient;
     this.messageBus = messageBus;
   }
@@ -136,6 +146,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
     List<Long> personalProjectIds = getProjectIds(userProjects);
     List<Long> nonPersonalProjectsByUserIds = findNonPersonalProjectIdsByUserIds(userIds);
 
+    deleteUsersPhoto(userIds);
     deleteUsersByIds(userIds);
     publishUnassignUserEvents(nonPersonalProjectsByUserIds);
     personalProjectIds.forEach(this::deleteProjectAssociatedData);
@@ -144,6 +155,23 @@ public class DeleteExpiredUsersJob extends BaseJob {
     publishEmailNotificationEvents(getUserEmails(userProjects));
 
     LOGGER.info("{} - users was deleted due to retention policy", userIds.size());
+  }
+
+  private void deleteUsersPhoto(List<Long> userIds) {
+    if (!CollectionUtils.isEmpty(userIds)) {
+      MapSqlParameterSource parameters = new MapSqlParameterSource();
+      parameters.addValue("userIds", userIds);
+      var userAttachments = namedParameterJdbcTemplate
+          .queryForList(SELECT_USERS_ATTACHMENTS, parameters, String.class)
+          .stream()
+          .map(DataStorageUtils::decode)
+          .toList();
+      try {
+        dataStorageService.deleteAll(userAttachments);
+      } catch (Exception e) {
+        LOGGER.error("Failed to delete users photo from data storage: {}", userAttachments, e);
+      }
+    }
   }
 
   private void publishEmailNotificationEvents(List<String> userEmails) {
