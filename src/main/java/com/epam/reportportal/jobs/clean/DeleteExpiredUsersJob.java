@@ -57,6 +57,7 @@ import org.springframework.util.CollectionUtils;
 public class DeleteExpiredUsersJob extends BaseJob {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(DeleteExpiredUsersJob.class);
+  public static final String USER_IDS = "userIds";
 
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
@@ -160,7 +161,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private void deleteUsersPhoto(List<Long> userIds) {
     if (!CollectionUtils.isEmpty(userIds)) {
       MapSqlParameterSource parameters = new MapSqlParameterSource();
-      parameters.addValue("userIds", userIds);
+      parameters.addValue(USER_IDS, userIds);
       var userAttachments = namedParameterJdbcTemplate
           .queryForList(SELECT_USERS_ATTACHMENTS, parameters, String.class)
           .stream()
@@ -189,7 +190,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private List<Long> findNonPersonalProjectIdsByUserIds(List<Long> userIds) {
     return CollectionUtils.isEmpty(userIds) ? Collections.emptyList() :
         namedParameterJdbcTemplate.queryForList(FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS,
-            Map.of("userIds", userIds), Long.class
+            Map.of(USER_IDS, userIds), Long.class
         );
   }
 
@@ -218,7 +219,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private void deleteUsersByIds(List<Long> userIds) {
     if (!userIds.isEmpty()) {
       MapSqlParameterSource params = new MapSqlParameterSource();
-      params.addValue("userIds", userIds);
+      params.addValue(USER_IDS, userIds);
       namedParameterJdbcTemplate.update(DELETE_USERS, params);
       messageBus.publishActivity(new UserDeletedEvent(userIds.size()));
     }
