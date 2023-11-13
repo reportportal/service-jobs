@@ -23,6 +23,8 @@ import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
 import com.epam.reportportal.model.activity.event.UnassignUserEvent;
 import com.epam.reportportal.model.activity.event.UserDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
+import com.epam.reportportal.storage.DataStorageService;
+import com.epam.reportportal.utils.DataStorageUtils;
 import com.epam.reportportal.utils.ValidationUtil;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -55,6 +57,7 @@ import org.springframework.util.CollectionUtils;
 public class DeleteExpiredUsersJob extends BaseJob {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(DeleteExpiredUsersJob.class);
+  public static final String USER_IDS = "userIds";
 
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
@@ -95,6 +98,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private static final String DELETE_USERS = "DELETE FROM users WHERE id IN (:userIds)";
 
+  private static final String SELECT_USERS_ATTACHMENTS = """
+         SELECT attachment FROM users WHERE (id IN (:userIds) AND attachment IS NOT NULL)\s
+         UNION\s
+         SELECT attachment_thumbnail FROM users WHERE (id IN (:userIds) AND attachment_thumbnail IS NOT NULL)""";
+
   private static final String DELETE_PROJECTS_BY_ID_LIST =
       "DELETE FROM project WHERE id IN (:projectIds)";
 
@@ -106,6 +114,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
   private Long retentionPeriod;
+  private final DataStorageService dataStorageService;
 
   private final IndexerServiceClient indexerServiceClient;
 
@@ -114,9 +123,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
   @Autowired
   public DeleteExpiredUsersJob(JdbcTemplate jdbcTemplate,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-      IndexerServiceClient indexerServiceClient, MessageBus messageBus) {
+      DataStorageService dataStorageService, IndexerServiceClient indexerServiceClient,
+      MessageBus messageBus) {
     super(jdbcTemplate);
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+    this.dataStorageService = dataStorageService;
     this.indexerServiceClient = indexerServiceClient;
     this.messageBus = messageBus;
   }
@@ -136,6 +147,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
     List<Long> personalProjectIds = getProjectIds(userProjects);
     List<Long> nonPersonalProjectsByUserIds = findNonPersonalProjectIdsByUserIds(userIds);
 
+    deleteUsersPhoto(userIds);
     deleteUsersByIds(userIds);
     publishUnassignUserEvents(nonPersonalProjectsByUserIds);
     personalProjectIds.forEach(this::deleteProjectAssociatedData);
@@ -144,6 +156,23 @@ public class DeleteExpiredUsersJob extends BaseJob {
     publishEmailNotificationEvents(getUserEmails(userProjects));
 
     LOGGER.info("{} - users was deleted due to retention policy", userIds.size());
+  }
+
+  private void deleteUsersPhoto(List<Long> userIds) {
+    if (!CollectionUtils.isEmpty(userIds)) {
+      MapSqlParameterSource parameters = new MapSqlParameterSource();
+      parameters.addValue(USER_IDS, userIds);
+      var userAttachments = namedParameterJdbcTemplate
+          .queryForList(SELECT_USERS_ATTACHMENTS, parameters, String.class)
+          .stream()
+          .map(DataStorageUtils::decode)
+          .toList();
+      try {
+        dataStorageService.deleteAll(userAttachments);
+      } catch (Exception e) {
+        LOGGER.error("Failed to delete users photo from data storage: {}", userAttachments, e);
+      }
+    }
   }
 
   private void publishEmailNotificationEvents(List<String> userEmails) {
@@ -161,7 +190,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private List<Long> findNonPersonalProjectIdsByUserIds(List<Long> userIds) {
     return CollectionUtils.isEmpty(userIds) ? Collections.emptyList() :
         namedParameterJdbcTemplate.queryForList(FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS,
-            Map.of("userIds", userIds), Long.class
+            Map.of(USER_IDS, userIds), Long.class
         );
   }
 
@@ -190,7 +219,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private void deleteUsersByIds(List<Long> userIds) {
     if (!userIds.isEmpty()) {
       MapSqlParameterSource params = new MapSqlParameterSource();
-      params.addValue("userIds", userIds);
+      params.addValue(USER_IDS, userIds);
       namedParameterJdbcTemplate.update(DELETE_USERS, params);
       messageBus.publishActivity(new UserDeletedEvent(userIds.size()));
     }
