@@ -98,9 +98,9 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private static final String DELETE_USERS = "DELETE FROM users WHERE id IN (:userIds)";
 
   private static final String SELECT_USERS_ATTACHMENTS = """
-         SELECT attachment FROM users WHERE (id IN (:userIds) and attachment is not null)\s
+         SELECT attachment FROM users WHERE (id IN (:userIds) AND attachment IS NOT NULL)\s
          UNION\s
-         SELECT attachment_thumbnail FROM users WHERE (id IN (:userIds) and attachment_thumbnail is not null)""";
+         SELECT attachment_thumbnail FROM users WHERE (id IN (:userIds) AND attachment_thumbnail IS NOT NULL)""";
 
   private static final String DELETE_PROJECTS_BY_ID_LIST =
       "DELETE FROM project WHERE id IN (:projectIds)";
