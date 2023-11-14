@@ -64,9 +64,11 @@ public class LocalDataStorageService implements DataStorageService {
     if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
       Map<String, List<String>> bucketPathMap = retrieveBucketPathMap(paths);
       for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
-        removeFiles(SINGLE_BUCKET_NAME, bucketPaths.getValue());
-        deleteEmptyDirs(
-            Paths.get(baseDirectory, SINGLE_BUCKET_NAME, PROJECT_PREFIX, bucketPaths.getKey()));
+        removeFiles(
+            SINGLE_BUCKET_NAME,
+            bucketPaths.getValue().stream().map(s -> bucketPaths.getKey() + "/" + s).toList()
+        );
+        deleteEmptyDirs(Paths.get(baseDirectory, SINGLE_BUCKET_NAME, PROJECT_PREFIX));
       }
     } else {
       Map<String, List<String>> bucketPathMap = retrieveBucketPathMap(paths);
