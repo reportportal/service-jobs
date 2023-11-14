@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.jclouds.blobstore.BlobStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,9 +65,11 @@ public class LocalDataStorageService implements DataStorageService {
     if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
       Map<String, List<String>> bucketPathMap = retrieveBucketPathMap(paths);
       for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
-        removeFiles(SINGLE_BUCKET_NAME, bucketPaths.getValue());
-        deleteEmptyDirs(
-            Paths.get(baseDirectory, SINGLE_BUCKET_NAME, PROJECT_PREFIX, bucketPaths.getKey()));
+        removeFiles(SINGLE_BUCKET_NAME,
+            bucketPaths.getValue().stream().map(s -> bucketPaths.getKey() + "/" + s)
+                .collect(Collectors.toList())
+        );
+        deleteEmptyDirs(Paths.get(baseDirectory, SINGLE_BUCKET_NAME, PROJECT_PREFIX));
       }
     } else {
       Map<String, List<String>> bucketPathMap = retrieveBucketPathMap(paths);
