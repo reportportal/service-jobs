@@ -154,8 +154,13 @@ public class DataStorageConfig {
   @ConditionalOnProperty(name = "datastore.type", havingValue = "filesystem")
   public DataStorageService localDataStore(@Autowired BlobStore blobStore,
       FeatureFlagHandler featureFlagHandler,
-      @Value("${datastore.path:/data/store}") String baseDirectory) {
-    return new LocalDataStorageService(blobStore, featureFlagHandler, baseDirectory);
+      @Value("${datastore.path:/data/store}") String baseDirectory,
+      @Value("${datastore.bucketPrefix}") String bucketPrefix,
+      @Value("${datastore.bucketPostfix}") String bucketPostfix,
+      @Value("${datastore.defaultBucketName}") String defaultBucketName) {
+    return new LocalDataStorageService(blobStore, featureFlagHandler, baseDirectory, bucketPrefix,
+        bucketPostfix, defaultBucketName
+    );
   }
 
   /**
