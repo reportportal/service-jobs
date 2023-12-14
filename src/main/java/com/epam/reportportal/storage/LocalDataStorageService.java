@@ -45,15 +45,24 @@ public class LocalDataStorageService implements DataStorageService {
 
   private final String baseDirectory;
 
+  private final String bucketPrefix;
+
+  private final String bucketPostfix;
+
+  private final String defaultBucketName;
+
   private static final String PROJECT_PREFIX = "project-data";
 
   private static final String SINGLE_BUCKET_NAME = "store";
 
   public LocalDataStorageService(BlobStore blobStore, FeatureFlagHandler featureFlagHandler,
-      String baseDirectory) {
+      String baseDirectory, String bucketPrefix, String bucketPostfix, String defaultBucketName) {
     this.blobStore = blobStore;
     this.featureFlagHandler = featureFlagHandler;
     this.baseDirectory = baseDirectory;
+    this.bucketPrefix = bucketPrefix;
+    this.bucketPostfix = bucketPostfix;
+    this.defaultBucketName = defaultBucketName;
   }
 
   @Override
@@ -65,7 +74,7 @@ public class LocalDataStorageService implements DataStorageService {
       Map<String, List<String>> bucketPathMap = retrieveBucketPathMap(paths);
       for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
         removeFiles(
-            SINGLE_BUCKET_NAME,
+            defaultBucketName,
             bucketPaths.getValue().stream().map(s -> bucketPaths.getKey() + "/" + s).toList()
         );
         deleteEmptyDirs(Paths.get(baseDirectory, SINGLE_BUCKET_NAME, PROJECT_PREFIX));
@@ -73,7 +82,7 @@ public class LocalDataStorageService implements DataStorageService {
     } else {
       Map<String, List<String>> bucketPathMap = retrieveBucketPathMap(paths);
       for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
-        removeFiles(bucketPaths.getKey(), bucketPaths.getValue());
+        removeFiles(bucketPrefix + bucketPaths.getKey() + bucketPostfix, bucketPaths.getValue());
         deleteEmptyDirs(Paths.get(baseDirectory, bucketPaths.getKey()));
       }
     }
