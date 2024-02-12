@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
  * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
 @Configuration
-@ConditionalOnProperty(prefix = "rp.elasticsearch", name = "host")
+@ConditionalOnProperty(prefix = "rp.searchengine", name = "host")
 public class BackgroundProcessingConfiguration {
 
   public static final String LOG_MESSAGE_SAVING_QUEUE_NAME = "log_message_saving";
