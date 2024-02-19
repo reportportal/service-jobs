@@ -1,7 +1,7 @@
 package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
-import com.epam.reportportal.elastic.ElasticSearchClient;
+import com.epam.reportportal.elastic.SearchEngineClient;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -29,18 +29,18 @@ public class CleanLogJob extends BaseCleanJob {
   private final CleanAttachmentJob cleanAttachmentJob;
   private final IndexerServiceClient indexerServiceClient;
   private final ApplicationEventPublisher eventPublisher;
-  private final ElasticSearchClient elasticSearchClient;
+  private final SearchEngineClient searchEngineClient;
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
   public CleanLogJob(JdbcTemplate jdbcTemplate, CleanAttachmentJob cleanAttachmentJob,
       IndexerServiceClient indexerServiceClient, ApplicationEventPublisher eventPublisher,
-      ElasticSearchClient elasticSearchClient,
+      SearchEngineClient searchEngineClient,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
     super(jdbcTemplate);
     this.cleanAttachmentJob = cleanAttachmentJob;
     this.indexerServiceClient = indexerServiceClient;
     this.eventPublisher = eventPublisher;
-    this.elasticSearchClient = elasticSearchClient;
+    this.searchEngineClient = searchEngineClient;
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
   }
 
@@ -68,16 +68,16 @@ public class CleanLogJob extends BaseCleanJob {
 
         final List<Long> launchIds = getLaunchIds(projectId, lessThanDate);
         if (!launchIds.isEmpty()) {
-          deleteLogsFromElasticsearchByLaunchIdsAndProjectId(launchIds, projectId);
+          deleteLogsFromSearchEngineByLaunchIdsAndProjectId(launchIds, projectId);
         }
 			}
 		});
 	}
 
-  private void deleteLogsFromElasticsearchByLaunchIdsAndProjectId(List<Long> launchIds,
+  private void deleteLogsFromSearchEngineByLaunchIdsAndProjectId(List<Long> launchIds,
       Long projectId) {
     for (Long launchId : launchIds) {
-      elasticSearchClient.deleteLogsByLaunchIdAndProjectId(launchId, projectId);
+      searchEngineClient.deleteLogsByLaunchIdAndProjectId(launchId, projectId);
       LOGGER.info("Delete logs from ES by launch {} and project {}", launchId, projectId);
     }
   }
