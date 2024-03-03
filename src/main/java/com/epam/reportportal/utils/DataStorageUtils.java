@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 EPAM Systems
+ * Copyright 2023 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,24 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.analyzer;
+package com.epam.reportportal.utils;
 
-import com.rabbitmq.http.client.domain.ExchangeInfo;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import org.apache.commons.lang3.StringUtils;
 
 /**
- * @author <a href="mailto:ihar_kahadouski@epam.com">Ihar Kahadouski</a>
+ * Utility class for data storage functionality.
+ *
+ * @author <a href="mailto:siarhei_hrabko@epam.com">Siarhe Hrabko</a>
  */
-public interface RabbitMqManagementClient {
+public final class DataStorageUtils {
 
-  List<ExchangeInfo> getAnalyzerExchangesInfo();
+  private DataStorageUtils() {
+  }
 
+  public static String decode(String data) {
+    return StringUtils.isEmpty(data) ? data :
+        new String(Base64.getUrlDecoder().decode(data), StandardCharsets.UTF_8);
+  }
 }

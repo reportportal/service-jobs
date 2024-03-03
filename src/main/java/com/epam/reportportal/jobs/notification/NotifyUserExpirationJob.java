@@ -55,30 +55,31 @@ public class NotifyUserExpirationJob extends BaseJob {
   private static final String DEADLINE_DATE = "deadlineDate";
   private static final String DAYS = " days";
 
-  private static final String SELECT_USERS_FOR_NOTIFY = "WITH user_last_action AS ( "
-      + "SELECT "
-      + "  u.id as user_id, "
-      + "  u.email as email, "
-      + "DATE_PART('day', NOW() - GREATEST("
-      + "  DATE(to_timestamp(CAST(u.metadata->'metadata'->>'last_login' AS bigint) / 1000)), "
-      + "MAX(ak.last_used_at))) AS inactivityPeriod "
-      + "FROM "
-      + "  users u "
-      + "  LEFT JOIN api_keys ak ON u.id = ak.user_id "
-      + "WHERE "
-      + "  u.role != 'ADMINISTRATOR' "
-      + "GROUP BY "
-      + "  u.id "
-      + ") "
-      + "SELECT "
-      + "  user_last_action.user_id, "
-      + "  user_last_action.email, "
-      + "  user_last_action.inactivityPeriod, "
-      + "  :retentionPeriod - inactivityPeriod as remainingTime "
-      + "FROM "
-      + "  user_last_action "
-      + "WHERE "
-      + "  :retentionPeriod - inactivityPeriod IN (1, 30, 60)";
+  private static final String SELECT_USERS_FOR_NOTIFY = """
+      WITH user_last_action AS (\s
+      SELECT\s
+        u.id as user_id,\s
+        u.email as email,\s
+      DATE_PART('day', NOW() - GREATEST(
+        DATE(to_timestamp(CAST(u.metadata->'metadata'->>'last_login' AS bigint) / 1000)),\s
+      MAX(ak.last_used_at))) AS inactivityPeriod\s
+      FROM\s
+        users u\s
+        LEFT JOIN api_keys ak ON u.id = ak.user_id\s
+      WHERE\s
+        u.role != 'ADMINISTRATOR'\s
+      GROUP BY\s
+        u.id\s
+      )\s
+      SELECT\s
+        user_last_action.user_id,\s
+        user_last_action.email,\s
+        user_last_action.inactivityPeriod,\s
+        :retentionPeriod - inactivityPeriod as remainingTime\s
+      FROM\s
+        user_last_action\s
+      WHERE\s
+        :retentionPeriod - inactivityPeriod IN (1, 30, 60)""";
 
   private static final String RETENTION_PERIOD = "retentionPeriod";
 

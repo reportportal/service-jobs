@@ -32,6 +32,9 @@ rp:
         expiredUser:
           ## 24 hours
           cron: '0 0 */24 * * *'
+        events:
+          ## 24 hours
+          cron: '0 0 */24 * * *'
       storage:
         project:
           ## 1 minute

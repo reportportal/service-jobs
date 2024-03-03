@@ -24,8 +24,8 @@ import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
 		FlywayAutoConfiguration.class})
 public class ServiceJobApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(ServiceJobApplication.class, args);
-	}
+  public static void main(String[] args) {
+    SpringApplication.run(ServiceJobApplication.class, args);
+  }
 
 }

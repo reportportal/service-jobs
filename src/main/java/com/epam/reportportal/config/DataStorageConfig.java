@@ -26,12 +26,14 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.inject.Module;
+import java.util.Properties;
 import java.util.Set;
 import org.jclouds.ContextBuilder;
 import org.jclouds.aws.s3.config.AWSS3HttpApiModule;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.ContainerNotFoundException;
+import org.jclouds.filesystem.reference.FilesystemConstants;
 import org.jclouds.rest.ConfiguresHttpApi;
 import org.jclouds.s3.S3Client;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -135,9 +137,30 @@ public class DataStorageConfig {
 
   @Bean
   @ConditionalOnProperty(name = "datastore.type", havingValue = "filesystem")
-  public DataStorageService localDataStore(
-      @Value("${datastore.path:/data/store}") String storagePath) {
-    return new LocalDataStorageService(storagePath);
+  public BlobStore filesystemBlobStore(
+      @Value("${datastore.path:/data/store}") String baseDirectory) {
+
+    Properties properties = new Properties();
+    properties.setProperty(FilesystemConstants.PROPERTY_BASEDIR, baseDirectory);
+
+    BlobStoreContext blobStoreContext =
+        ContextBuilder.newBuilder("filesystem").overrides(properties)
+            .buildView(BlobStoreContext.class);
+
+    return blobStoreContext.getBlobStore();
+  }
+
+  @Bean
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "filesystem")
+  public DataStorageService localDataStore(@Autowired BlobStore blobStore,
+      FeatureFlagHandler featureFlagHandler,
+      @Value("${datastore.path:/data/store}") String baseDirectory,
+      @Value("${datastore.bucketPrefix}") String bucketPrefix,
+      @Value("${datastore.bucketPostfix}") String bucketPostfix,
+      @Value("${datastore.defaultBucketName}") String defaultBucketName) {
+    return new LocalDataStorageService(blobStore, featureFlagHandler, baseDirectory, bucketPrefix,
+        bucketPostfix, defaultBucketName
+    );
   }
 
   /**
@@ -179,7 +202,8 @@ public class DataStorageConfig {
       @Value("${datastore.defaultBucketName}") String defaultBucketName,
       FeatureFlagHandler featureFlagHandler) {
     return new S3DataStorageService(blobStore, bucketPrefix, bucketPostfix, defaultBucketName,
-        featureFlagHandler);
+        featureFlagHandler
+    );
   }
 
   /**
@@ -213,6 +237,7 @@ public class DataStorageConfig {
       @Value("${datastore.defaultBucketName}") String defaultBucketName,
       FeatureFlagHandler featureFlagHandler) {
     return new S3DataStorageService(blobStore, bucketPrefix, bucketPostfix, defaultBucketName,
-        featureFlagHandler);
+        featureFlagHandler
+    );
   }
 }

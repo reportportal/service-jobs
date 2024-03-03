@@ -3,14 +3,12 @@ package com.epam.reportportal.jobs.clean;
 import com.epam.reportportal.jobs.BaseJob;
 import com.epam.reportportal.model.BlobNotFoundException;
 import com.epam.reportportal.storage.DataStorageService;
-import java.nio.charset.StandardCharsets;
+import com.epam.reportportal.utils.DataStorageUtils;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -27,8 +25,9 @@ public class CleanStorageJob extends BaseJob {
 
   private static final String ROLLBACK_ERROR_MESSAGE = "Rollback deleting transaction.";
   private static final String SELECT_AND_DELETE_DATA_CHUNK_QUERY =
-      "DELETE FROM attachment_deletion WHERE id IN "
-          + "(SELECT id FROM attachment_deletion ORDER BY id LIMIT ?) RETURNING *";
+      """
+          DELETE FROM attachment_deletion WHERE id IN\s
+          (SELECT id FROM attachment_deletion ORDER BY id LIMIT ?) RETURNING *""";
 
   private static final int MAX_BATCH_SIZE = 200000;
   private final DataStorageService storageService;
@@ -84,9 +83,9 @@ public class CleanStorageJob extends BaseJob {
       }
       try {
         storageService.deleteAll(
-            thumbnails.stream().map(this::decode).collect(Collectors.toList()));
+            thumbnails.stream().map(DataStorageUtils::decode).collect(Collectors.toList()));
         storageService.deleteAll(
-            attachments.stream().map(this::decode).collect(Collectors.toList()));
+            attachments.stream().map(DataStorageUtils::decode).collect(Collectors.toList()));
         attachments.clear();
         thumbnails.clear();
       } catch (BlobNotFoundException e) {
@@ -101,8 +100,4 @@ public class CleanStorageJob extends BaseJob {
     }
   }
 
-  private String decode(String data) {
-    return StringUtils.isEmpty(data) ? data :
-        new String(Base64.getUrlDecoder().decode(data), StandardCharsets.UTF_8);
-  }
 }

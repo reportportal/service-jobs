@@ -16,43 +16,44 @@
 
 package com.epam.reportportal.analyzer;
 
+import static java.util.Comparator.comparingInt;
+import static java.util.Optional.ofNullable;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.rabbitmq.http.client.Client;
 import com.rabbitmq.http.client.domain.ExchangeInfo;
-import org.apache.commons.lang3.math.NumberUtils;
-
 import java.util.List;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
-
-import static java.util.Comparator.comparingInt;
-import static java.util.Optional.ofNullable;
+import org.apache.commons.lang3.math.NumberUtils;
 
 /**
  * @author <a href="mailto:ihar_kahadouski@epam.com">Ihar Kahadouski</a>
  */
 public class RabbitMqManagementClientTemplate implements RabbitMqManagementClient {
 
-	public static final String ANALYZER_KEY = "analyzer";
-	static final String ANALYZER_PRIORITY = "analyzer_priority";
-	private final String virtualHost;
+  public static final String ANALYZER_KEY = "analyzer";
+  static final String ANALYZER_PRIORITY = "analyzer_priority";
+  public static final ToIntFunction<ExchangeInfo> EXCHANGE_PRIORITY = it -> ofNullable(
+      it.getArguments()
+          .get(ANALYZER_PRIORITY)).map(val -> NumberUtils.toInt(val.toString(), Integer.MAX_VALUE))
+      .orElse(Integer.MAX_VALUE);
+  private final String virtualHost;
+  private final Client rabbitClient;
 
-	public static final ToIntFunction<ExchangeInfo> EXCHANGE_PRIORITY = it -> ofNullable(it.getArguments()
-			.get(ANALYZER_PRIORITY)).map(val -> NumberUtils.toInt(val.toString(), Integer.MAX_VALUE)).orElse(Integer.MAX_VALUE);
+  public RabbitMqManagementClientTemplate(Client rabbitClient, String virtualHost)
+      throws JsonProcessingException {
+    this.rabbitClient = rabbitClient;
+    this.virtualHost = virtualHost;
+    rabbitClient.createVhost(virtualHost);
+  }
 
-	private final Client rabbitClient;
-
-	public RabbitMqManagementClientTemplate(Client rabbitClient, String virtualHost) throws JsonProcessingException {
-		this.rabbitClient = rabbitClient;
-		this.virtualHost = virtualHost;
-		rabbitClient.createVhost(virtualHost);
-	}
-
-	public List<ExchangeInfo> getAnalyzerExchangesInfo() {
-		return ofNullable(rabbitClient.getExchanges(virtualHost)).map(client -> client.stream()
-						.filter(it -> it.getArguments().get(ANALYZER_KEY) != null)
-						.sorted(comparingInt(EXCHANGE_PRIORITY))
-						.collect(Collectors.toList()))
-				.orElseThrow(() -> new RuntimeException("Unable to resolve exchanges for key: " + ANALYZER_KEY));
-	}
+  public List<ExchangeInfo> getAnalyzerExchangesInfo() {
+    return ofNullable(rabbitClient.getExchanges(virtualHost)).map(client -> client.stream()
+            .filter(it -> it.getArguments().get(ANALYZER_KEY) != null)
+            .sorted(comparingInt(EXCHANGE_PRIORITY))
+            .collect(Collectors.toList()))
+        .orElseThrow(
+            () -> new RuntimeException("Unable to resolve exchanges for key: " + ANALYZER_KEY));
+  }
 }
