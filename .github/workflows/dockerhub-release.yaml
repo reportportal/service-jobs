@@ -2,7 +2,7 @@ name: Retag RC Docker image
 
 on:
   pull_request_review:
-    types: [ submitted ]
+    types: [submitted]
   workflow_dispatch:
 
 env:
