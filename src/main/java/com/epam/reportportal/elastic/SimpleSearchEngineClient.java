@@ -19,23 +19,23 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * Simple client to work with Elasticsearch.
+ * Simple client to work with Search engine.
  *
  * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
 @Primary
 @Service
-@ConditionalOnProperty(prefix = "rp.elasticsearch", name = "host")
-public class SimpleElasticSearchClient implements ElasticSearchClient {
+@ConditionalOnProperty(prefix = "rp.searchengine", name = "host")
+public class SimpleSearchEngineClient implements SearchEngineClient {
 
-  protected final Logger LOGGER = LoggerFactory.getLogger(SimpleElasticSearchClient.class);
+  protected final Logger LOGGER = LoggerFactory.getLogger(SimpleSearchEngineClient.class);
 
   private final String host;
   private final RestTemplate restTemplate;
 
-  public SimpleElasticSearchClient(@Value("${rp.elasticsearch.host}") String host,
-      @Value("${rp.elasticsearch.username:}") String username,
-      @Value("${rp.elasticsearch.password:}") String password) {
+  public SimpleSearchEngineClient(@Value("${rp.searchengine.host}") String host,
+      @Value("${rp.searchengine.username:}") String username,
+      @Value("${rp.searchengine.password:}") String password) {
     restTemplate = new RestTemplate();
 
     if (!username.isEmpty() && !password.isEmpty()) {

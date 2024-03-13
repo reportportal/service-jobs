@@ -1,7 +1,7 @@
 package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
-import com.epam.reportportal.elastic.ElasticSearchClient;
+import com.epam.reportportal.elastic.SearchEngineClient;
 import com.google.common.collect.Lists;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -35,21 +35,21 @@ public class CleanLaunchJob extends BaseCleanJob {
   private final CleanLogJob cleanLogJob;
   private final IndexerServiceClient indexerServiceClient;
   private final ApplicationEventPublisher eventPublisher;
-  private final ElasticSearchClient elasticSearchClient;
+  private final SearchEngineClient searchEngineClient;
 
   public CleanLaunchJob(
       @Value("${rp.environment.variable.elements-counter.batch-size}") Integer batchSize,
       JdbcTemplate jdbcTemplate,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate, CleanLogJob cleanLogJob,
       IndexerServiceClient indexerServiceClient,
-      ApplicationEventPublisher eventPublisher, ElasticSearchClient elasticSearchClient) {
+      ApplicationEventPublisher eventPublisher, SearchEngineClient searchEngineClient) {
     super(jdbcTemplate);
     this.batchSize = batchSize;
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     this.cleanLogJob = cleanLogJob;
     this.indexerServiceClient = indexerServiceClient;
     this.eventPublisher = eventPublisher;
-    this.elasticSearchClient = elasticSearchClient;
+    this.searchEngineClient = searchEngineClient;
   }
 
   @Override
@@ -77,7 +77,7 @@ public class CleanLaunchJob extends BaseCleanJob {
           indexerServiceClient.removeFromIndexLessThanLaunchDate(projectId, lessThanDate);
           LOGGER.info("Send message for deletion to analyzer for project {}", projectId);
 
-          deleteLogsFromElasticsearchByLaunchIdsAndProjectId(launchIds, projectId);
+          deleteLogsFromSearchEngineByLaunchIdsAndProjectId(launchIds, projectId);
 
 //					eventPublisher.publishEvent(new ElementsDeletedEvent(launchIds, projectId, numberOfLaunchElements));
 //					LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
@@ -86,10 +86,10 @@ public class CleanLaunchJob extends BaseCleanJob {
 		});
 	}
 
-  private void deleteLogsFromElasticsearchByLaunchIdsAndProjectId(List<Long> launchIds,
+  private void deleteLogsFromSearchEngineByLaunchIdsAndProjectId(List<Long> launchIds,
       Long projectId) {
     for (Long launchId : launchIds) {
-      elasticSearchClient.deleteLogsByLaunchIdAndProjectId(launchId, projectId);
+      searchEngineClient.deleteLogsByLaunchIdAndProjectId(launchId, projectId);
       LOGGER.info("Delete logs from ES by launch {} and project {}", launchId, projectId);
     }
   }
