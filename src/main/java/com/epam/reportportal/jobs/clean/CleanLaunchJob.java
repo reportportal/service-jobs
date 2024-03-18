@@ -27,8 +27,10 @@ public class CleanLaunchJob extends BaseCleanJob {
   private static final String IDS_PARAM = "ids";
   private static final String PROJECT_ID_PARAM = "projectId";
   private static final String START_TIME_PARAM = "startTime";
-  private static final String SELECT_LAUNCH_ID_QUERY = "SELECT id FROM launch WHERE project_id = :projectId AND start_time <= :startTime::TIMESTAMP;";
-  private static final String DELETE_CLUSTER_QUERY = "DELETE FROM clusters WHERE clusters.launch_id IN (:ids);";
+  private static final String SELECT_LAUNCH_ID_QUERY =
+      "SELECT id FROM launch WHERE project_id = :projectId AND start_time <= :startTime::TIMESTAMP AND important IS TRUE;";
+  private static final String DELETE_CLUSTER_QUERY =
+      "DELETE FROM clusters WHERE clusters.launch_id IN (:ids);";
   private static final String DELETE_LAUNCH_QUERY = "DELETE FROM launch WHERE id IN (:ids);";
   private final Integer batchSize;
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
@@ -39,9 +41,8 @@ public class CleanLaunchJob extends BaseCleanJob {
 
   public CleanLaunchJob(
       @Value("${rp.environment.variable.elements-counter.batch-size}") Integer batchSize,
-      JdbcTemplate jdbcTemplate,
-      NamedParameterJdbcTemplate namedParameterJdbcTemplate, CleanLogJob cleanLogJob,
-      IndexerServiceClient indexerServiceClient,
+      JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+      CleanLogJob cleanLogJob, IndexerServiceClient indexerServiceClient,
       ApplicationEventPublisher eventPublisher, SearchEngineClient searchEngineClient) {
     super(jdbcTemplate);
     this.batchSize = batchSize;
@@ -53,23 +54,23 @@ public class CleanLaunchJob extends BaseCleanJob {
   }
 
   @Override
-	@Scheduled(cron = "${rp.environment.variable.clean.launch.cron}")
-	@SchedulerLock(name = "cleanLaunch", lockAtMostFor = "24h")
-	public void execute() {
-		removeLaunches();
-		cleanLogJob.removeLogs();
-	}
+  @Scheduled(cron = "${rp.environment.variable.clean.launch.cron}")
+  @SchedulerLock(name = "cleanLaunch", lockAtMostFor = "24h")
+  public void execute() {
+    removeLaunches();
+    cleanLogJob.removeLogs();
+  }
 
-	private void removeLaunches() {
-		AtomicInteger counter = new AtomicInteger(0);
-		getProjectsWithAttribute(KEEP_LAUNCHES).forEach((projectId, duration) -> {
-			final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
-			final List<Long> launchIds = getLaunchIds(projectId, lessThanDate);
-			if (!launchIds.isEmpty()) {
-				deleteClusters(launchIds);
-//				final Long numberOfLaunchElements = countNumberOfLaunchElements(launchIds);
-        int deleted = namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY,
-            Map.of(IDS_PARAM, launchIds));
+  private void removeLaunches() {
+    AtomicInteger counter = new AtomicInteger(0);
+    getProjectsWithAttribute(KEEP_LAUNCHES).forEach((projectId, duration) -> {
+      final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
+      final List<Long> launchIds = getLaunchIds(projectId, lessThanDate);
+      if (!launchIds.isEmpty()) {
+        deleteClusters(launchIds);
+        //				final Long numberOfLaunchElements = countNumberOfLaunchElements(launchIds);
+        int deleted =
+            namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY, Map.of(IDS_PARAM, launchIds));
         counter.addAndGet(deleted);
         LOGGER.info("Delete {} launches for project {}", deleted, projectId);
         // to avoid error message in analyzer log, doesn't find index
@@ -79,12 +80,12 @@ public class CleanLaunchJob extends BaseCleanJob {
 
           deleteLogsFromSearchEngineByLaunchIdsAndProjectId(launchIds, projectId);
 
-//					eventPublisher.publishEvent(new ElementsDeletedEvent(launchIds, projectId, numberOfLaunchElements));
-//					LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
-				}
-			}
-		});
-	}
+          //					eventPublisher.publishEvent(new ElementsDeletedEvent(launchIds, projectId, numberOfLaunchElements));
+          //					LOGGER.info("Send event with elements deleted number {} for project {}", deleted, projectId);
+        }
+      }
+    });
+  }
 
   private void deleteLogsFromSearchEngineByLaunchIdsAndProjectId(List<Long> launchIds,
       Long projectId) {
@@ -96,8 +97,7 @@ public class CleanLaunchJob extends BaseCleanJob {
 
   private List<Long> getLaunchIds(Long projectId, LocalDateTime lessThanDate) {
     return namedParameterJdbcTemplate.queryForList(SELECT_LAUNCH_ID_QUERY,
-        Map.of(PROJECT_ID_PARAM, projectId, START_TIME_PARAM, lessThanDate),
-        Long.class
+        Map.of(PROJECT_ID_PARAM, projectId, START_TIME_PARAM, lessThanDate), Long.class
     );
   }
 
@@ -111,20 +111,16 @@ public class CleanLaunchJob extends BaseCleanJob {
         "SELECT item_id FROM test_item WHERE launch_id IN (:ids) UNION "
             + "SELECT item_id FROM test_item WHERE retry_of IS NOT NULL AND retry_of IN "
             + "(SELECT item_id FROM test_item WHERE launch_id IN (:ids))",
-        Map.of(IDS_PARAM, launchIds),
-        Long.class
+        Map.of(IDS_PARAM, launchIds), Long.class
     );
     resultedNumber.addAndGet(itemIds.size());
-    Lists.partition(itemIds, batchSize)
-        .forEach(batch -> resultedNumber.addAndGet(
-            Optional.ofNullable(namedParameterJdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM log WHERE item_id IN (:ids);",
-                Map.of(IDS_PARAM, batch),
-                Long.class
-            )).orElse(0L)));
+    Lists.partition(itemIds, batchSize).forEach(batch -> resultedNumber.addAndGet(
+        Optional.ofNullable(namedParameterJdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM log WHERE item_id IN (:ids);", Map.of(IDS_PARAM, batch),
+            Long.class
+        )).orElse(0L)));
     resultedNumber.addAndGet(Optional.ofNullable(namedParameterJdbcTemplate.queryForObject(
-        "SELECT COUNT(*) FROM log WHERE log.launch_id IN (:ids);",
-        Map.of(IDS_PARAM, launchIds),
+        "SELECT COUNT(*) FROM log WHERE log.launch_id IN (:ids);", Map.of(IDS_PARAM, launchIds),
         Long.class
     )).orElse(0L));
     return resultedNumber.longValue();
