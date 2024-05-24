@@ -17,30 +17,41 @@ import org.springframework.stereotype.Service;
 @Service
 public class CleanAttachmentJob extends BaseCleanJob {
 
-	private static final String MOVING_QUERY =
-			"""
-					WITH moved_rows AS (DELETE FROM attachment WHERE project_id = ? AND creation_date <= ?::TIMESTAMP RETURNING *) \s
-					INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date, deletion_date)\s
-					SELECT id, file_id, thumbnail_id, creation_date, NOW() FROM moved_rows;""";
+  private static final String MOVING_QUERY = """
+      WITH moved_rows AS (
+        DELETE FROM attachment\s
+        WHERE project_id = ?\s
+        AND creation_date <= ?::TIMESTAMP\s
+        AND launch_id IN (
+          SELECT id FROM launch WHERE retention_policy='REGULAR'
+        )\s
+        RETURNING *
+      					)
+           INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date,
+      deletion_date)
+      SELECT id, file_id, thumbnail_id, creation_date, NOW() FROM moved_rows;""";
 
   public CleanAttachmentJob(JdbcTemplate jdbcTemplate) {
     super(jdbcTemplate);
   }
 
   @Override
-	@Scheduled(cron = "${rp.environment.variable.clean.attachment.cron}")
-	@SchedulerLock(name = "cleanAttachment", lockAtMostFor = "24h")
-	public void execute() {
-		moveAttachments();
-	}
+  @Scheduled(cron = "${rp.environment.variable.clean.attachment.cron}")
+  @SchedulerLock(name = "cleanAttachment", lockAtMostFor = "24h")
+  public void execute() {
+    moveAttachments();
+  }
 
-	void moveAttachments() {
-		AtomicInteger counter = new AtomicInteger(0);
-		getProjectsWithAttribute(KEEP_SCREENSHOTS).forEach((projectId, duration) -> {
-			LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
-			int movedCount = jdbcTemplate.update(MOVING_QUERY, projectId, lessThanDate);
-			counter.addAndGet(movedCount);
-			LOGGER.info("Moved {} attachments to the deletion table for project {}, lessThanDate {} ", movedCount, projectId, lessThanDate);
-		});
-	}
+  void moveAttachments() {
+    AtomicInteger counter = new AtomicInteger(0);
+    getProjectsWithAttribute(KEEP_SCREENSHOTS).forEach((projectId, duration) -> {
+      LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
+      int movedCount = jdbcTemplate.update(MOVING_QUERY, projectId, lessThanDate);
+      counter.addAndGet(movedCount);
+      LOGGER.info(
+          "Moved {} attachments to the deletion table for project {}, lessThanDate {} ", movedCount,
+          projectId, lessThanDate
+      );
+    });
+  }
 }
