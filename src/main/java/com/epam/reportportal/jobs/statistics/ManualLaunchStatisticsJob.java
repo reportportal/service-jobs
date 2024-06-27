@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Set;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.apache.commons.lang3.RandomUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -98,9 +97,9 @@ public class ManualLaunchStatisticsJob extends BaseJob {
     MapSqlParameterSource queryParams = new MapSqlParameterSource();
     queryParams.addValue(DATE_BEFORE, dateBefore);
 
-    JSONObject requestBody = new JSONObject();
-
     namedParameterJdbcTemplate.query(SELECT_ANALYZER_MANUAL_START_QUERY, queryParams, rs -> {
+      JSONObject requestBody = new JSONObject();
+
       int autoAnalyzed = 0;
       int userAnalyzed = 0;
       String version = null;
@@ -130,53 +129,56 @@ public class ManualLaunchStatisticsJob extends BaseJob {
 
       } while (rs.next());
 
-      if (autoAnalyzed + userAnalyzed > 0) {
-        var instanceID = jdbcTemplate.queryForObject(SELECT_INSTANCE_ID_QUERY, String.class);
-        var params = new JSONObject();
-        params.put("category", "analyzer");
-        params.put("instanceID", instanceID);
-        params.put("timestamp", now.toEpochMilli());
-        params.put("version", version); // get from table
-        params.put("type", analyzerEnabled ? "is_analyzer" : "not_analyzer");
-        if (analyzerEnabled) {
-          params.put("number", autoAnalyzed + "#" + userAnalyzed);
-          params.put("auto_analysis", String.join("#", autoAnalysisState));
-          params.put("status", String.join("#", status));
-        }
-
-        var event = new JSONObject();
-        event.put("name", "analyze_analyzer");
-        event.put("params", params);
-
-        JSONArray events = new JSONArray();
-        events.put(event);
-
-        requestBody.put("client_id",
-            now.toEpochMilli() + "." + RandomUtils.nextInt(100_000, 999_999));
-        requestBody.put("events", events);
-
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Sending statistics data with measurementId: {} and body: {}", measurementId,
-              requestBody);
-        }
-
-        try {
-          var response = restTemplate.exchange(GA_URL, HttpMethod.POST,
-              new HttpEntity<>(requestBody), Object.class, getGa4UrlParameters());
-          if (response.getStatusCodeValue() != 204) {
-            LOGGER.error("Failed to send statistics: {}", response);
-          }
-          response.getStatusCode();
-        } catch (Exception e) {
-          LOGGER.error("Failed to send statistics", e);
-        } finally {
-          jdbcTemplate.execute(DELETE_ANALYZER_MANUAL_START_QUERY);
-        }
+      var instanceID = jdbcTemplate.queryForObject(SELECT_INSTANCE_ID_QUERY, String.class);
+      var params = new JSONObject();
+      params.put("category", "analyzer");
+      params.put("instanceID", instanceID);
+      params.put("timestamp", now.toEpochMilli());
+      params.put("version", version); // get from table
+      params.put("type", analyzerEnabled ? "is_analyzer" : "not_analyzer");
+      if (analyzerEnabled) {
+        params.put("number", autoAnalyzed + "#" + userAnalyzed);
+        params.put("auto_analysis", String.join("#", autoAnalysisState));
+        params.put("status", String.join("#", status));
       }
+
+      var event = new JSONObject();
+      event.put("name", "analyze_analyzer");
+      event.put("params", params);
+
+      JSONArray events = new JSONArray();
+      events.put(event);
+
+      requestBody.put("client_id",
+          now.toEpochMilli() + "." + RandomUtils.nextInt(100_000, 999_999));
+      requestBody.put("events", events);
+
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Sending statistics data with measurementId: {} and body: {}", measurementId,
+            requestBody);
+      }
+
+      sendRequest(requestBody);
+
     });
 
     LOGGER.info("Completed analyzer manual start item statistics job");
 
+  }
+
+  private void sendRequest(JSONObject requestBody) {
+    try {
+      var response = restTemplate.exchange(GA_URL, HttpMethod.POST, new HttpEntity<>(requestBody),
+          Object.class, getGa4UrlParameters());
+      if (response.getStatusCodeValue() != 204) {
+        LOGGER.error("Failed to send statistics: {}", response);
+      }
+      response.getStatusCode();
+    } catch (Exception e) {
+      LOGGER.error("Failed to send statistics", e);
+    } finally {
+      jdbcTemplate.execute(DELETE_ANALYZER_MANUAL_START_QUERY);
+    }
   }
 
   private Map<String, String> getGa4UrlParameters() {
