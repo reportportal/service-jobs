@@ -98,8 +98,6 @@ public class ManualLaunchStatisticsJob extends BaseJob {
     queryParams.addValue(DATE_BEFORE, dateBefore);
 
     namedParameterJdbcTemplate.query(SELECT_ANALYZER_MANUAL_START_QUERY, queryParams, rs -> {
-      JSONObject requestBody = new JSONObject();
-
       int autoAnalyzed = 0;
       int userAnalyzed = 0;
       String version = null;
@@ -129,10 +127,10 @@ public class ManualLaunchStatisticsJob extends BaseJob {
 
       } while (rs.next());
 
-      var instanceID = jdbcTemplate.queryForObject(SELECT_INSTANCE_ID_QUERY, String.class);
+      var instanceId = jdbcTemplate.queryForObject(SELECT_INSTANCE_ID_QUERY, String.class);
       var params = new JSONObject();
       params.put("category", "analyzer");
-      params.put("instanceID", instanceID);
+      params.put("instanceID", instanceId);
       params.put("timestamp", now.toEpochMilli());
       params.put("version", version); // get from table
       params.put("type", analyzerEnabled ? "is_analyzer" : "not_analyzer");
@@ -149,6 +147,7 @@ public class ManualLaunchStatisticsJob extends BaseJob {
       JSONArray events = new JSONArray();
       events.put(event);
 
+      JSONObject requestBody = new JSONObject();
       requestBody.put("client_id",
           now.toEpochMilli() + "." + RandomUtils.nextInt(100_000, 999_999));
       requestBody.put("events", events);
