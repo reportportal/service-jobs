@@ -19,6 +19,7 @@ package com.epam.reportportal.jobs.statistics;
 import static org.springframework.http.HttpMethod.POST;
 
 import com.epam.reportportal.jobs.BaseJob;
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -157,7 +158,7 @@ public class ManualLaunchStatisticsJob extends BaseJob {
 
       JSONObject requestBody = new JSONObject();
       requestBody.put("client_id",
-          now.toEpochMilli() + "." + RandomUtils.nextInt(100_000, 999_999));
+          now.toEpochMilli() + "." + new SecureRandom().nextInt(100_000, 999_999));
       requestBody.put("events", events);
 
       sendRequest(requestBody);

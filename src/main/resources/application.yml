@@ -42,7 +42,7 @@ rp:
       ga:
         apiSecret:
         measurementId:
-        cron: '*/5 * * * * *'
+        cron: '0 0 */24 * * *'
       executor:
         pool:
           storage:
