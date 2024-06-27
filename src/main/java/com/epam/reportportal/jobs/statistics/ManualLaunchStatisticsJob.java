@@ -16,23 +16,24 @@
 
 package com.epam.reportportal.jobs.statistics;
 
+import static org.springframework.http.HttpMethod.POST;
+
 import com.epam.reportportal.jobs.BaseJob;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.apache.commons.lang3.RandomUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -47,10 +48,9 @@ import org.springframework.web.client.RestTemplate;
  * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
 @Service
-@ConditionalOnProperty(prefix = "rp.environment.variable.ga", name = "measurement")
 public class ManualLaunchStatisticsJob extends BaseJob {
 
-  private static final String GA_URL = "https://www.google-analytics.com/mp/collect";
+  private static final String GA_URL = "https://www.google-analytics.com/mp/collect?measurement_id=%s&api_secret=%s";
   private static final String DATE_BEFORE = "date_before";
 
   private static final String SELECT_INSTANCE_ID_QUERY = "SELECT value FROM server_settings WHERE key = 'server.details.instance';";
@@ -62,6 +62,7 @@ public class ManualLaunchStatisticsJob extends BaseJob {
   private final RestTemplate restTemplate;
 
   private final String measurementId;
+  private final String apiSecret;
 
 
   /**
@@ -71,10 +72,12 @@ public class ManualLaunchStatisticsJob extends BaseJob {
    */
   @Autowired
   public ManualLaunchStatisticsJob(JdbcTemplate jdbcTemplate,
-      @Value("${rp.environment.variable.ga.measurement:}") String measurementId,
+      @Value("${rp.environment.variable.ga.measurementId}") String measurementId,
+      @Value("${rp.environment.variable.ga.apiSecret}") String apiSecret,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
     super(jdbcTemplate);
     this.measurementId = measurementId;
+    this.apiSecret = apiSecret;
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     this.restTemplate = new RestTemplate();
   }
@@ -85,10 +88,15 @@ public class ManualLaunchStatisticsJob extends BaseJob {
    */
   @Override
   @Scheduled(cron = "${rp.environment.variable.ga.cron}")
-  @SchedulerLock(name = "manualAnalyzedStatisticsJob", lockAtMostFor = "24h")
+  @SchedulerLock(name = "manualAnalyzedStatisticsJob12", lockAtMostFor = "24h")
   @Transactional
   public void execute() {
     LOGGER.info("Start sending analyzer manual start item statistics");
+    if (StringUtils.isEmpty(measurementId) || StringUtils.isEmpty(apiSecret)) {
+      LOGGER.info(
+          "Both 'measurementId' and 'apiSecret' environment variables should be provided in order to run the job 'manualAnalyzedStatisticsJob'");
+      return;
+    }
 
     var now = Instant.now();
     var dateBefore = now.minus(1, ChronoUnit.DAYS)
@@ -152,11 +160,6 @@ public class ManualLaunchStatisticsJob extends BaseJob {
           now.toEpochMilli() + "." + RandomUtils.nextInt(100_000, 999_999));
       requestBody.put("events", events);
 
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Sending statistics data with measurementId: {} and body: {}", measurementId,
-            requestBody);
-      }
-
       sendRequest(requestBody);
 
     });
@@ -167,23 +170,25 @@ public class ManualLaunchStatisticsJob extends BaseJob {
 
   private void sendRequest(JSONObject requestBody) {
     try {
-      var response = restTemplate.exchange(GA_URL, HttpMethod.POST, new HttpEntity<>(requestBody),
-          Object.class, getGa4UrlParameters());
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Sending statistics data: {}", requestBody);
+      }
+
+      HttpHeaders headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_JSON);
+      HttpEntity<String> request = new HttpEntity<>(requestBody.toString(), headers);
+
+      String url = String.format(GA_URL, measurementId, apiSecret);
+
+      var response = restTemplate.exchange(url, POST, request, String.class);
       if (response.getStatusCodeValue() != 204) {
         LOGGER.error("Failed to send statistics: {}", response);
       }
-      response.getStatusCode();
     } catch (Exception e) {
       LOGGER.error("Failed to send statistics", e);
     } finally {
       jdbcTemplate.execute(DELETE_ANALYZER_MANUAL_START_QUERY);
     }
-  }
-
-  private Map<String, String> getGa4UrlParameters() {
-    Map<String, String> map = new HashMap<>();
-    map.put("measurementId", measurementId);
-    return map;
   }
 
 }

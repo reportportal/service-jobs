@@ -40,8 +40,9 @@ rp:
           ## 1 minute
           cron: '0 */1 * * * *'
       ga:
-        measurement:
-        cron: '0 0 */24 * * *'
+        apiSecret:
+        measurementId:
+        cron: '*/5 * * * * *'
       executor:
         pool:
           storage:
