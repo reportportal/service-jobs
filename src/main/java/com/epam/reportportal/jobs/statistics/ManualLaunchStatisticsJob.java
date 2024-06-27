@@ -89,7 +89,7 @@ public class ManualLaunchStatisticsJob extends BaseJob {
    */
   @Override
   @Scheduled(cron = "${rp.environment.variable.ga.cron}")
-  @SchedulerLock(name = "manualAnalyzedStatisticsJob12", lockAtMostFor = "24h")
+  @SchedulerLock(name = "manualAnalyzedStatisticsJob", lockAtMostFor = "24h")
   @Transactional
   public void execute() {
     LOGGER.info("Start sending analyzer manual start item statistics");
