@@ -108,30 +108,31 @@ public class ManualLaunchStatisticsJob extends BaseJob {
     namedParameterJdbcTemplate.query(SELECT_ANALYZER_MANUAL_START_QUERY, queryParams, rs -> {
       int autoAnalyzed = 0;
       int userAnalyzed = 0;
+      int sentToAnalyze = 0;
       String version = null;
       boolean analyzerEnabled;
       Set<String> status = new HashSet<>();
       Set<String> autoAnalysisState = new HashSet<>();
 
       do {
-        var metadata = new JSONObject(rs.getString("metadata")).getJSONObject("metadata");
+        var metadata = new JSONObject(rs.getString("metadata"))
+            .getJSONObject("metadata");
 
-        userAnalyzed += metadata.optInt("manuallyAnalyzed");
-        autoAnalyzed += metadata.optInt("autoAnalyzed");
+        analyzerEnabled = metadata.getBoolean("analyzerEnabled");
+        if (analyzerEnabled) {
+          autoAnalysisState.add(metadata.getBoolean("autoAnalysisOn") ? "on" : "off");
+        }
 
-        if (metadata.optInt("manuallyAnalyzed") > 0) {
+        if (metadata.optInt("userAnalyzed") > 0) {
           status.add("manually");
         } else if (metadata.optInt("autoAnalyzed") > 0) {
           status.add("automatically");
         }
-        analyzerEnabled = metadata.getBoolean("analyzerEnabled");
-        if (analyzerEnabled) {
-          autoAnalysisState.add(metadata.getBoolean("auto_analysis") ? "on" : "off");
-        }
 
-        if (version == null) {
-          version = metadata.getString("version");
-        }
+        userAnalyzed += metadata.optInt("userAnalyzed");
+        autoAnalyzed += metadata.optInt("autoAnalyzed");
+        sentToAnalyze += metadata.optInt("userAnalyzed") + metadata.optInt("sentToAnalyze");
+        version = metadata.getString("version");
 
       } while (rs.next());
 
@@ -140,10 +141,10 @@ public class ManualLaunchStatisticsJob extends BaseJob {
       params.put("category", "analyzer");
       params.put("instanceID", instanceId);
       params.put("timestamp", now.toEpochMilli());
-      params.put("version", version); // get from table
+      params.put("version", version);
       params.put("type", analyzerEnabled ? "is_analyzer" : "not_analyzer");
       if (analyzerEnabled) {
-        params.put("number", autoAnalyzed + "#" + userAnalyzed);
+        params.put("number", autoAnalyzed + "#" + userAnalyzed + "#" + sentToAnalyze);
         params.put("auto_analysis", String.join("#", autoAnalysisState));
         params.put("status", String.join("#", status));
       }
