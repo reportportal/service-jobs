@@ -48,14 +48,14 @@ import org.springframework.web.client.RestTemplate;
  * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
 @Service
-public class ManualLaunchStatisticsJob extends BaseJob {
+public class DefectUpdateStatisticsJob extends BaseJob {
 
   private static final String GA_URL = "https://www.google-analytics.com/mp/collect?measurement_id=%s&api_secret=%s";
   private static final String DATE_BEFORE = "date_before";
 
   private static final String SELECT_INSTANCE_ID_QUERY = "SELECT value FROM server_settings WHERE key = 'server.details.instance';";
-  private static final String SELECT_ANALYZER_MANUAL_START_QUERY = "SELECT * FROM analytics_data WHERE type = 'ANALYZER_MANUAL_START' AND created_at >= :date_before::TIMESTAMP;";
-  private static final String DELETE_ANALYZER_MANUAL_START_QUERY = "DELETE FROM analytics_data WHERE type = 'ANALYZER_MANUAL_START';";
+  private static final String SELECT_STATISTICS_QUERY = "SELECT * FROM analytics_data WHERE type = 'DEFECT_UPDATE_STATISTICS' AND created_at >= :date_before::TIMESTAMP;";
+  private static final String DELETE_STATISTICS_QUERY = "DELETE FROM analytics_data WHERE type = 'DEFECT_UPDATE_STATISTICS';";
 
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
@@ -66,12 +66,12 @@ public class ManualLaunchStatisticsJob extends BaseJob {
 
 
   /**
-   * Initializes {@link ManualLaunchStatisticsJob}.
+   * Initializes {@link DefectUpdateStatisticsJob}.
    *
    * @param jdbcTemplate {@link JdbcTemplate}
    */
   @Autowired
-  public ManualLaunchStatisticsJob(JdbcTemplate jdbcTemplate,
+  public DefectUpdateStatisticsJob(JdbcTemplate jdbcTemplate,
       @Value("${rp.environment.variable.ga.measurementId}") String measurementId,
       @Value("${rp.environment.variable.ga.apiSecret}") String apiSecret,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
@@ -84,17 +84,17 @@ public class ManualLaunchStatisticsJob extends BaseJob {
 
 
   /**
-   * Sends manual analyzed items statistics.
+   * Sends analyzed items statistics.
    */
   @Override
   @Scheduled(cron = "${rp.environment.variable.ga.cron}")
-  @SchedulerLock(name = "manualAnalyzedStatisticsJob", lockAtMostFor = "24h")
+  @SchedulerLock(name = "defectUpdateStatisticsJob", lockAtMostFor = "24h")
   @Transactional
   public void execute() {
-    LOGGER.info("Start sending analyzer manual start item statistics");
+    LOGGER.info("Start sending items defect update statistics");
     if (StringUtils.isEmpty(measurementId) || StringUtils.isEmpty(apiSecret)) {
       LOGGER.info(
-          "Both 'measurementId' and 'apiSecret' environment variables should be provided in order to run the job 'manualAnalyzedStatisticsJob'");
+          "Both 'measurementId' and 'apiSecret' environment variables should be provided in order to run the job 'defectUpdateStatisticsJob'");
       return;
     }
 
@@ -105,11 +105,11 @@ public class ManualLaunchStatisticsJob extends BaseJob {
     MapSqlParameterSource queryParams = new MapSqlParameterSource();
     queryParams.addValue(DATE_BEFORE, dateBefore);
 
-    namedParameterJdbcTemplate.query(SELECT_ANALYZER_MANUAL_START_QUERY, queryParams, rs -> {
+    namedParameterJdbcTemplate.query(SELECT_STATISTICS_QUERY, queryParams, rs -> {
       int autoAnalyzed = 0;
       int userAnalyzed = 0;
       int sentToAnalyze = 0;
-      String version = null;
+      String version;
       boolean analyzerEnabled;
       Set<String> status = new HashSet<>();
       Set<String> autoAnalysisState = new HashSet<>();
@@ -118,7 +118,7 @@ public class ManualLaunchStatisticsJob extends BaseJob {
         var metadata = new JSONObject(rs.getString("metadata"))
             .getJSONObject("metadata");
 
-        analyzerEnabled = metadata.getBoolean("analyzerEnabled");
+        analyzerEnabled = metadata.optBoolean("analyzerEnabled");
         if (analyzerEnabled) {
           autoAnalysisState.add(metadata.getBoolean("autoAnalysisOn") ? "on" : "off");
         }
@@ -130,7 +130,7 @@ public class ManualLaunchStatisticsJob extends BaseJob {
         }
 
         userAnalyzed += metadata.optInt("userAnalyzed");
-        autoAnalyzed += metadata.optInt("autoAnalyzed");
+        autoAnalyzed += metadata.optInt("analyzed");
         sentToAnalyze += metadata.optInt("userAnalyzed") + metadata.optInt("sentToAnalyze");
         version = metadata.getString("version");
 
@@ -165,7 +165,7 @@ public class ManualLaunchStatisticsJob extends BaseJob {
 
     });
 
-    LOGGER.info("Completed analyzer manual start item statistics job");
+    LOGGER.info("Completed items defect update statistics job");
 
   }
 
@@ -188,7 +188,7 @@ public class ManualLaunchStatisticsJob extends BaseJob {
     } catch (Exception e) {
       LOGGER.error("Failed to send statistics", e);
     } finally {
-      jdbcTemplate.execute(DELETE_ANALYZER_MANUAL_START_QUERY);
+      jdbcTemplate.execute(DELETE_STATISTICS_QUERY);
     }
   }
 
