@@ -125,7 +125,7 @@ public class ManualLaunchStatisticsJob extends BaseJob {
 
         if (metadata.optInt("userAnalyzed") > 0) {
           status.add("manually");
-        } else if (metadata.optInt("autoAnalyzed") > 0) {
+        } else {
           status.add("automatically");
         }
 
