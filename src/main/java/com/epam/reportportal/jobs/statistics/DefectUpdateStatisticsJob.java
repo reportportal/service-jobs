@@ -62,7 +62,7 @@ public class DefectUpdateStatisticsJob extends BaseJob {
   private final RestTemplate restTemplate;
 
   private final String measurementId;
-  private final String apiSecret;
+  private final String gaId;
 
 
   /**
@@ -73,11 +73,11 @@ public class DefectUpdateStatisticsJob extends BaseJob {
   @Autowired
   public DefectUpdateStatisticsJob(JdbcTemplate jdbcTemplate,
       @Value("${rp.environment.variable.ga.measurementId}") String measurementId,
-      @Value("${rp.environment.variable.ga.apiSecret}") String apiSecret,
+      @Value("${rp.environment.variable.ga.id}") String gaId,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
     super(jdbcTemplate);
     this.measurementId = measurementId;
-    this.apiSecret = apiSecret;
+    this.gaId = gaId;
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     this.restTemplate = new RestTemplate();
   }
@@ -92,9 +92,9 @@ public class DefectUpdateStatisticsJob extends BaseJob {
   @Transactional
   public void execute() {
     LOGGER.info("Start sending items defect update statistics");
-    if (StringUtils.isEmpty(measurementId) || StringUtils.isEmpty(apiSecret)) {
+    if (StringUtils.isEmpty(measurementId) || StringUtils.isEmpty(gaId)) {
       LOGGER.info(
-          "Both 'measurementId' and 'apiSecret' environment variables should be provided in order to run the job 'defectUpdateStatisticsJob'");
+          "Both 'measurementId' and 'gaId' environment variables should be provided in order to run the job 'defectUpdateStatisticsJob'");
       return;
     }
 
@@ -179,7 +179,7 @@ public class DefectUpdateStatisticsJob extends BaseJob {
       headers.setContentType(MediaType.APPLICATION_JSON);
       HttpEntity<String> request = new HttpEntity<>(requestBody.toString(), headers);
 
-      String url = String.format(GA_URL, measurementId, apiSecret);
+      String url = String.format(GA_URL, measurementId, gaId);
 
       var response = restTemplate.exchange(url, POST, request, String.class);
       if (response.getStatusCodeValue() != 204) {
