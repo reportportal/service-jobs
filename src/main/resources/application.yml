@@ -40,7 +40,7 @@ rp:
           ## 1 minute
           cron: '0 */1 * * * *'
       ga:
-        apiSecret:
+        id:
         measurementId:
         cron: '0 0 */24 * * *'
       executor:
