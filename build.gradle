@@ -25,7 +25,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 wrapper {
-    gradleVersion = '8.5'
+    gradleVersion = '8.10'
 }
 
 bootJar {
@@ -53,7 +53,7 @@ ext['log4j2.version'] = '2.21.1'
 ext['log4j-to-slf4j.version'] = '2.21.1'
 //https://nvd.nist.gov/vuln/detail/CVE-2022-26520
 ext['postgresql.version'] = '42.6.0'
-ext['snakeyaml.version'] = '1.33'
+ext['snakeyaml.version'] = '2.2'
 //
 
 dependencies {
