@@ -22,8 +22,8 @@ public class CleanAttachmentJob extends BaseCleanJob {
         DELETE FROM attachment\s
         WHERE project_id = ?\s
         AND creation_date <= ?::TIMESTAMP\s
-        AND launch_id IN (
-          SELECT id FROM launch WHERE retention_policy='REGULAR'
+        AND launch_id NOT IN (
+          SELECT id FROM launch WHERE retention_policy='IMPORTANT'
         )\s
         RETURNING *
       					)
