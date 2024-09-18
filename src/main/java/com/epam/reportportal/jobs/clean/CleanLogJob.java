@@ -63,7 +63,6 @@ public class CleanLogJob extends BaseCleanJob {
   }
 
   void removeLogs() {
-    LOGGER.info("CleanLogJob has been started!!!");
     AtomicInteger counter = new AtomicInteger(0);
     // TODO: Need to refactor Logs to keep real it's launchId and combine code with
     // CleanLaunch to avoid duplication
