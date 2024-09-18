@@ -63,6 +63,7 @@ public class CleanLaunchJob extends BaseCleanJob {
   }
 
   private void removeLaunches() {
+    LOGGER.info("CleanLaunchJob has been started!!!");
     AtomicInteger counter = new AtomicInteger(0);
     getProjectsWithAttribute(KEEP_LAUNCHES).forEach((projectId, duration) -> {
       final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);

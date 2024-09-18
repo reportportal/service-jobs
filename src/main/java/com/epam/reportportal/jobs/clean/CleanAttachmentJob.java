@@ -43,6 +43,7 @@ public class CleanAttachmentJob extends BaseCleanJob {
   }
 
   void moveAttachments() {
+    LOGGER.info("CleanAttachmentJob has been started!!!");
     AtomicInteger counter = new AtomicInteger(0);
     getProjectsWithAttribute(KEEP_SCREENSHOTS).forEach((projectId, duration) -> {
       LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
