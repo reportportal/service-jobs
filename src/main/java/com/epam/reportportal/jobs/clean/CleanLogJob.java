@@ -60,7 +60,6 @@ public class CleanLogJob extends BaseCleanJob {
   @SchedulerLock(name = "cleanLog", lockAtMostFor = "24h")
   public void execute() {
     removeLogs();
-    cleanAttachmentJob.moveAttachments();
   }
 
   void removeLogs() {
@@ -84,6 +83,7 @@ public class CleanLogJob extends BaseCleanJob {
         }
       }
     });
+    cleanAttachmentJob.moveAttachments();
   }
 
   private void deleteLogsFromSearchEngineByLaunchIdsAndProjectId(List<Long> launchIds,
