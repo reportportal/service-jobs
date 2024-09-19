@@ -125,13 +125,14 @@ public class DefectUpdateStatisticsJob extends BaseJob {
 
         if (metadata.optInt("userAnalyzed") > 0) {
           status.add("manually");
+          sentToAnalyze += metadata.optInt("userAnalyzed");
         } else {
           status.add("automatically");
+          sentToAnalyze += metadata.optInt("sentToAnalyze");
         }
 
         userAnalyzed += metadata.optInt("userAnalyzed");
         autoAnalyzed += metadata.optInt("analyzed");
-        sentToAnalyze += metadata.optInt("userAnalyzed") + metadata.optInt("sentToAnalyze");
         version = metadata.getString("version");
 
       } while (rs.next());
@@ -164,6 +165,9 @@ public class DefectUpdateStatisticsJob extends BaseJob {
       sendRequest(requestBody);
 
     });
+
+    LOGGER.info("Completed items defect update statistics job");
+
   }
 
   private void sendRequest(JSONObject requestBody) {
