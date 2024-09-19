@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
  * @author <a href="mailto:maksim_antonov@epam.com">Maksim Antonov</a>
  */
 @Service
-@ConditionalOnProperty(prefix = "rp.elasticsearch", name = "host")
+@ConditionalOnProperty(prefix = "rp.searchengine", name = "host")
 public class SaveLogMessageJob {
 
   public static final String LOG_MESSAGE_SAVING_QUEUE_NAME = "log_message_saving";

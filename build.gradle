@@ -1,6 +1,6 @@
 plugins {
-    id 'org.springframework.boot' version '2.7.17'
-    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'org.springframework.boot' version '2.7.18'
+    id 'io.spring.dependency-management' version '1.1.4'
     id 'java'
 }
 
@@ -11,9 +11,8 @@ project.ext {
 
 ext['junit-jupiter.version'] = '5.10.0'
 
-def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/' + (releaseMode ? '5.11.0' : 'EPMRPP-85756')
+def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/' + (releaseMode ? '5.12.0' : 'develop')
 
-apply from: "$scriptsUrl/build-docker.gradle"
 apply from: "$scriptsUrl/build-commons.gradle"
 apply from: "$scriptsUrl/build-info.gradle"
 //apply from: "$scriptsUrl/build-quality.gradle"
@@ -26,7 +25,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 wrapper {
-    gradleVersion = '8.4'
+    gradleVersion = '8.10'
 }
 
 bootJar {
@@ -54,7 +53,8 @@ ext['log4j2.version'] = '2.21.1'
 ext['log4j-to-slf4j.version'] = '2.21.1'
 //https://nvd.nist.gov/vuln/detail/CVE-2022-26520
 ext['postgresql.version'] = '42.6.1'
-ext['snakeyaml.version'] = '1.33'
+ext['snakeyaml.version'] = '2.2'
+ext['spring-boot.version'] = '2.7.18'
 //
 
 dependencies {
@@ -91,6 +91,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
+    implementation 'org.springframework:spring-jdbc:6.1.5'
     implementation 'org.apache.jclouds.api:s3:2.5.0'
     implementation 'org.apache.jclouds.provider:aws-s3:2.5.0'
     implementation 'org.apache.jclouds.api:filesystem:2.5.0'

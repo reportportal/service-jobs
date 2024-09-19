@@ -39,13 +39,17 @@ rp:
         project:
           ## 1 minute
           cron: '0 */1 * * * *'
+      ga:
+        id: ovxfTlz7QOeaZDPbroXZQA
+        mId: G-Z22WZS0E4E
+        cron: '0 0 */24 * * *'
       executor:
         pool:
           storage:
             project:
               core: 5
               max: 10
-#  elasticsearch:
+#  searchengine:
 #    host: http://elasticsearch:9200
 #    username:
 #    password:
