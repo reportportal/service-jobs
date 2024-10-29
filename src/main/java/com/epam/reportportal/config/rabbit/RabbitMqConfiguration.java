@@ -29,7 +29,6 @@ import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -72,15 +71,6 @@ public class RabbitMqConfiguration {
   public RabbitAdmin rabbitAdmin(
       @Qualifier("connectionFactory") ConnectionFactory connectionFactory) {
     return new RabbitAdmin(connectionFactory);
-  }
-
-  @Bean
-  SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-      SimpleRabbitListenerContainerFactoryConfigurer configurer,
-      @Qualifier("connectionFactory") ConnectionFactory connectionFactory) {
-    SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-    configurer.configure(factory, connectionFactory);
-    return factory;
   }
 
   @Bean(name = "rabbitTemplate")
