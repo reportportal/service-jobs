@@ -17,5 +17,5 @@ ENV JAVA_OPTS="-Xmx1g -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=70 -Djava.
 WORKDIR $APP_DIR
 COPY --from=build $APP_DIR/build/libs/service-jobs-*exec.jar .
 VOLUME ["/tmp"]
-EXPOSE 8080
+EXPOSE 8686
 ENTRYPOINT exec java ${JAVA_OPTS} -jar ${APP_DIR}/service-jobs-*exec.jar
