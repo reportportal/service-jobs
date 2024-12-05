@@ -149,11 +149,11 @@ public class DefectUpdateStatisticsJob extends BaseJob {
       params.put("version", version);
       params.put("type", analyzerEnabled ? "is_analyzer" : "not_analyzer");
       if (analyzerEnabled) {
-        params.put("number", autoAnalyzed +
-            "#" + userAnalyzed +
-            "#" + sentToAnalyze +
-            "#" + skipped +
-            "#" + passed);
+        params.put("number", autoAnalyzed
+            + "#" + userAnalyzed
+            + "#" + sentToAnalyze
+            + "#" + skipped
+            + "#" + passed);
         params.put("auto_analysis", String.join("#", autoAnalysisState));
         params.put("status", String.join("#", status));
       }
