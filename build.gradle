@@ -109,3 +109,7 @@ test {
 
 publish.dependsOn build
 publish.mustRunAfter build
+
+tasks.preTagCommit.enabled = false
+tasks.updateVersion.enabled = false
+tasks.commitNewVersion.enabled = false
