@@ -109,8 +109,8 @@ public class DefectUpdateStatisticsJob extends BaseJob {
       int autoAnalyzed = 0;
       int userAnalyzed = 0;
       int sentToAnalyze = 0;
-      int skipped;
-      int passed;
+      int skipped = 0;
+      int passed = 0;
       String version;
       boolean analyzerEnabled;
       Set<String> status = new HashSet<>();
@@ -132,8 +132,8 @@ public class DefectUpdateStatisticsJob extends BaseJob {
           status.add("automatically");
           sentToAnalyze += metadata.optInt("sentToAnalyze");
         }
-        skipped = metadata.optInt("skipped");
-        passed = metadata.optInt("passed");
+        skipped += metadata.optInt("skipped");
+        passed += metadata.optInt("passed");
 
         userAnalyzed += metadata.optInt("userAnalyzed");
         autoAnalyzed += metadata.optInt("analyzed");
