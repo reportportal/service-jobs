@@ -10,6 +10,4 @@ jobs:
 
     with:
       release_version: ${{ github.event.release.tag_name }}
-      artifact_upload_url: 'https://maven.pkg.github.com/'
       java_version: "21"
-      branch: master
