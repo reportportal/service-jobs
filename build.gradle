@@ -63,6 +63,11 @@ dependencies {
     // https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
     implementation 'org.apache.commons:commons-lang3:3.12.0'
 
+    //Fix CVE-2025-24813
+    implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.35'
+    implementation 'org.apache.tomcat.embed:tomcat-embed-el:10.1.35'
+    implementation 'org.apache.tomcat.embed:tomcat-embed-websocket:10.1.35'
+
     implementation 'ch.qos.logback:logback-classic'
     implementation 'ch.qos.logback:logback-core'
     implementation 'org.springframework:spring-webmvc'
