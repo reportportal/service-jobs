@@ -11,7 +11,7 @@ project.ext {
 
 ext['junit-jupiter.version'] = '5.10.0'
 
-def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/' + (releaseMode ? '5.12.0' : 'develop')
+def scriptsUrl = 'https://raw.githubusercontent.com/reportportal/gradle-scripts/' + (releaseMode ? '5.14.0' : 'develop')
 
 apply from: "$scriptsUrl/build-commons.gradle"
 apply from: "$scriptsUrl/build-info.gradle"
