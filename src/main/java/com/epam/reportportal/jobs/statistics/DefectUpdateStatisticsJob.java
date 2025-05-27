@@ -109,6 +109,7 @@ public class DefectUpdateStatisticsJob extends BaseJob {
       int autoAnalyzed = 0;
       int userAnalyzed = 0;
       int sentToAnalyze = 0;
+      int skipped = 0;
       String version;
       boolean analyzerEnabled;
       Set<String> status = new HashSet<>();
@@ -130,6 +131,7 @@ public class DefectUpdateStatisticsJob extends BaseJob {
           status.add("automatically");
           sentToAnalyze += metadata.optInt("sentToAnalyze");
         }
+        skipped += metadata.optInt("skipped");
 
         userAnalyzed += metadata.optInt("userAnalyzed");
         autoAnalyzed += metadata.optInt("analyzed");
@@ -145,7 +147,10 @@ public class DefectUpdateStatisticsJob extends BaseJob {
       params.put("version", version);
       params.put("type", analyzerEnabled ? "is_analyzer" : "not_analyzer");
       if (analyzerEnabled) {
-        params.put("number", autoAnalyzed + "#" + userAnalyzed + "#" + sentToAnalyze);
+        params.put("number", autoAnalyzed
+            + "#" + userAnalyzed
+            + "#" + sentToAnalyze
+            + "#" + skipped);
         params.put("auto_analysis", String.join("#", autoAnalysisState));
         params.put("status", String.join("#", status));
       }
