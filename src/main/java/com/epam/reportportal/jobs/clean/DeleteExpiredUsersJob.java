@@ -282,7 +282,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
   }
 
 
-  private static class User {
+  static class User {
 
     private long userId;
     private String email;
@@ -304,7 +304,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
     }
   }
 
-  private static class ProjectOrganization {
+  static class ProjectOrganization {
 
     private Long projectId;
     private Long organizationId;
