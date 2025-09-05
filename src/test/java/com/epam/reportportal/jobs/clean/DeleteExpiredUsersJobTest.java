@@ -17,6 +17,9 @@ import static org.mockito.Mockito.when;
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import com.epam.reportportal.model.EmailNotificationRequest;
 import com.epam.reportportal.model.activity.ActivityEvent;
+import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
+import com.epam.reportportal.model.activity.event.UnassignUserEvent;
+import com.epam.reportportal.model.activity.event.UserDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
 import com.epam.reportportal.storage.DataStorageService;
 import java.util.Collections;
@@ -108,17 +111,17 @@ class DeleteExpiredUsersJobTest {
     List<ActivityEvent> publishedActivities = activityCaptor.getAllValues();
 
     long projectDeletedEvents = publishedActivities.stream()
-        .filter(activity -> activity.getClass().getSimpleName().equals("ProjectDeletedEvent"))
+        .filter(activity -> activity instanceof ProjectDeletedEvent)
         .count();
     assertEquals(1, projectDeletedEvents);
 
     long userDeletedEvents = publishedActivities.stream()
-        .filter(activity -> activity.getClass().getSimpleName().equals("UserDeletedEvent"))
+        .filter(activity -> activity instanceof UserDeletedEvent)
         .count();
     assertEquals(1, userDeletedEvents);
 
     long unassignUserEvents = publishedActivities.stream()
-        .filter(activity -> activity.getClass().getSimpleName().equals("UnassignUserEvent"))
+        .filter(activity -> activity instanceof UnassignUserEvent)
         .count();
     assertEquals(2, unassignUserEvents);
 
@@ -245,17 +248,17 @@ class DeleteExpiredUsersJobTest {
     List<ActivityEvent> publishedActivities = activityCaptor.getAllValues();
 
     long projectDeletedEvents = publishedActivities.stream()
-        .filter(activity -> activity.getClass().getSimpleName().equals("ProjectDeletedEvent"))
+        .filter(activity -> activity instanceof ProjectDeletedEvent)
         .count();
-    assertEquals(1, projectDeletedEvents, "Should have 1 ProjectDeletedEvent (even with 0 projects)");
+    assertEquals(1, projectDeletedEvents);
 
     long userDeletedEvents = publishedActivities.stream()
-        .filter(activity -> activity.getClass().getSimpleName().equals("UserDeletedEvent"))
+        .filter(activity -> activity instanceof UserDeletedEvent)
         .count();
-    assertEquals(1, userDeletedEvents, "Should have 1 UserDeletedEvent");
+    assertEquals(1, userDeletedEvents);
 
     long unassignUserEvents = publishedActivities.stream()
-        .filter(activity -> activity.getClass().getSimpleName().equals("UnassignUserEvent"))
+        .filter(activity -> activity instanceof UnassignUserEvent)
         .count();
     assertEquals(1, unassignUserEvents);
 
@@ -272,7 +275,7 @@ class DeleteExpiredUsersJobTest {
     DeleteExpiredUsersJob.User user2 = createUser(2L, "user2@test.com");
     DeleteExpiredUsersJob.User user3 = createUser(3L, "user3@test.com");
     List<DeleteExpiredUsersJob.User> expiredUsers = List.of(user1, user2, user3);
-    List<Long> personalProjectIds = List.of(10L, 20L, 30L, 40L); // 4 personal projects
+    List<Long> personalProjectIds = List.of(10L, 20L, 30L, 40L);
     List<DeleteExpiredUsersJob.ProjectOrganization> nonPersonalProjects = List.of(
         createProjectOrganization(100L, 1L),
         createProjectOrganization(200L, 2L)
@@ -297,19 +300,19 @@ class DeleteExpiredUsersJobTest {
     List<ActivityEvent> publishedActivities = activityCaptor.getAllValues();
 
     long projectDeletedEvents = publishedActivities.stream()
-        .filter(activity -> activity.getClass().getSimpleName().equals("ProjectDeletedEvent"))
+        .filter(activity -> activity instanceof ProjectDeletedEvent)
         .count();
-    assertEquals(1, projectDeletedEvents, "Should have 1 ProjectDeletedEvent");
+    assertEquals(1, projectDeletedEvents);
 
     long userDeletedEvents = publishedActivities.stream()
-        .filter(activity -> activity.getClass().getSimpleName().equals("UserDeletedEvent"))
+        .filter(activity -> activity instanceof UserDeletedEvent)
         .count();
-    assertEquals(1, userDeletedEvents, "Should have 1 UserDeletedEvent");
+    assertEquals(1, userDeletedEvents);
 
     long unassignUserEvents = publishedActivities.stream()
-        .filter(activity -> activity.getClass().getSimpleName().equals("UnassignUserEvent"))
+        .filter(activity -> activity instanceof UnassignUserEvent)
         .count();
-    assertEquals(2, unassignUserEvents, "Should have 2 UnassignUserEvents");
+    assertEquals(2, unassignUserEvents);
 
     verify(messageBus, times(1)).publishEmailNotificationEvents(emailCaptor.capture());
     List<List<EmailNotificationRequest>> emailNotifications = emailCaptor.getAllValues();
