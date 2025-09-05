@@ -20,7 +20,7 @@ import com.epam.reportportal.model.activity.enums.EventAction;
 import com.epam.reportportal.model.activity.enums.EventObject;
 import com.epam.reportportal.model.activity.enums.EventPriority;
 import com.epam.reportportal.model.activity.enums.EventSubject;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * A model that represents the state of the Activity.
@@ -29,7 +29,7 @@ import java.time.LocalDateTime;
  */
 public class Activity {
 
-  private LocalDateTime createdAt;
+  private Instant createdAt;
   private EventAction action;
   private String eventName;
   private EventPriority priority;
@@ -38,6 +38,7 @@ public class Activity {
   private EventObject objectType;
   private Long projectId;
   private String projectName;
+  private Long organizationId;
   private Long subjectId;
   private String subjectName;
   private EventSubject subjectType;
@@ -47,11 +48,11 @@ public class Activity {
     this.isSavedEvent = true;
   }
 
-  public LocalDateTime getCreatedAt() {
+  public Instant getCreatedAt() {
     return createdAt;
   }
 
-  public void setCreatedAt(LocalDateTime createdAt) {
+  public void setCreatedAt(Instant createdAt) {
     this.createdAt = createdAt;
   }
 
@@ -119,6 +120,14 @@ public class Activity {
     this.projectName = projectName;
   }
 
+  public Long getOrganizationId() {
+    return organizationId;
+  }
+
+  public void setOrganizationId(Long organizationId) {
+    this.organizationId = organizationId;
+  }
+
   public Long getSubjectId() {
     return subjectId;
   }
@@ -170,7 +179,7 @@ public class Activity {
     }
 
     public ActivityBuilder addCreatedNow() {
-      activity.setCreatedAt(LocalDateTime.now());
+      activity.setCreatedAt(Instant.now());
       return this;
     }
 
@@ -211,6 +220,11 @@ public class Activity {
 
     public ActivityBuilder addProjectName(String projectName) {
       activity.setProjectName(projectName);
+      return this;
+    }
+
+    public ActivityBuilder addOrganizationId(Long organizationId) {
+      activity.setOrganizationId(organizationId);
       return this;
     }
 
