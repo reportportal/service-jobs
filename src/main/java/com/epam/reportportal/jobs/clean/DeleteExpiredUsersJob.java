@@ -67,16 +67,16 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private static final String SELECT_EXPIRED_USERS = """
       SELECT
-      	u.id AS user_id,
-      	u.email AS user_email
+          u.id AS user_id,
+          u.email AS user_email
       FROM users u
       LEFT JOIN api_keys ak ON u.id = ak.user_id
       WHERE
-      	(u.metadata->'metadata'->>'last_login')::BIGINT <= :retentionPeriod
-      	AND (ak.user_id IS NULL
-      		OR (EXTRACT(EPOCH FROM ak.last_used_at) * 1000)::BIGINT <= :retentionPeriod
-      		OR NOT EXISTS (SELECT 1 FROM api_keys WHERE user_id = u.id AND last_used_at IS NOT NULL))
-      	AND u.role != 'ADMINISTRATOR'
+          (u.metadata->'metadata'->>'last_login')::BIGINT <= :retentionPeriod
+          AND (ak.user_id IS NULL
+              OR (EXTRACT(EPOCH FROM ak.last_used_at) * 1000)::BIGINT <= :retentionPeriod
+              OR NOT EXISTS (SELECT 1 FROM api_keys WHERE user_id = u.id AND last_used_at IS NOT NULL))
+          AND u.role != 'ADMINISTRATOR'
       GROUP BY u.id
       """;
 
@@ -187,7 +187,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private void publishEmailNotificationEvents(List<String> userEmails) {
     List<EmailNotificationRequest> notifications = userEmails.stream()
         .map(recipient -> new EmailNotificationRequest(recipient, USER_DELETION_TEMPLATE))
-        .collect(Collectors.toList());
+        .toList();
     messageBus.publishEmailNotificationEvents(notifications);
   }
 
