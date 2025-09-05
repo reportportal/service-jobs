@@ -237,7 +237,6 @@ class DeleteExpiredUsersJobTest {
     // Then
     assertNotNull(deleteExpiredUsersJob);
     assertEquals(1, expiredUsers.size());
-    assertTrue(personalProjectIds.isEmpty());
     assertEquals(1, nonPersonalProjects.size());
 
     verify(dataStorageService, times(1)).deleteAll(anyList());

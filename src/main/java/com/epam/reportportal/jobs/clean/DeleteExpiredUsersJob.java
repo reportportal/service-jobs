@@ -154,17 +154,13 @@ public class DeleteExpiredUsersJob extends BaseJob {
     List<ProjectOrganization> nonPersonalProjects = findNonPersonalProjectsByUserIds(userIds);
 
     deleteUsersPhoto(userIds);
-    deleteProjectData(personalProjectIds);
+    personalProjectIds.forEach(this::deleteProjectAssociatedData);
     publishUnassignUserEvents(nonPersonalProjects);
     deleteUsersByIds(userIds);
+    publishProjectDeletedEvent(personalProjectIds);
     publishEmailNotificationEvents(getUserEmails(users));
 
     LOGGER.info("{} - users was deleted due to retention policy", userIds.size());
-  }
-
-  private void deleteProjectData(List<Long> personalProjectIds) {
-    personalProjectIds.forEach(this::deleteProjectAssociatedData);
-    messageBus.publishActivity(new ProjectDeletedEvent(personalProjectIds.size()));
   }
 
   private void deleteUsersPhoto(List<Long> userIds) {
@@ -182,6 +178,10 @@ public class DeleteExpiredUsersJob extends BaseJob {
         LOGGER.error("Failed to delete users photo from data storage: {}", userAttachments, e);
       }
     }
+  }
+
+  private void publishProjectDeletedEvent(List<Long> personalProjectIds) {
+    messageBus.publishActivity(new ProjectDeletedEvent(personalProjectIds.size()));
   }
 
   private void publishEmailNotificationEvents(List<String> userEmails) {
