@@ -32,9 +32,11 @@ import com.epam.reportportal.model.activity.enums.EventSubject;
 public class UnassignUserEvent implements ActivityEvent {
 
   private final Long projectId;
+  private final Long organizationId;
 
-  public UnassignUserEvent(Long projectId) {
+  public UnassignUserEvent(Long projectId, Long organizationId) {
     this.projectId = projectId;
+    this.organizationId = organizationId;
   }
 
   @Override
@@ -46,6 +48,7 @@ public class UnassignUserEvent implements ActivityEvent {
         .addObjectType(EventObject.USER)
         .addObjectName("deleted_user")
         .addProjectId(projectId)
+        .addOrganizationId(organizationId)
         .addSubjectName(EventSubject.APPLICATION.getApplicationName())
         .addSubjectType(EventSubject.APPLICATION)
         .addPriority(EventPriority.MEDIUM)
