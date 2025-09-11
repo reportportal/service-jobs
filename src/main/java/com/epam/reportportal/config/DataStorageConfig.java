@@ -173,7 +173,7 @@ public class DataStorageConfig {
    * @return {@link BlobStore}
    */
   @Bean
-  @ConditionalOnProperty(name = "datastore.type", havingValue = "minio")
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "s3-compatible")
   public BlobStore minioBlobStore(@Value("${datastore.accessKey}") String accessKey,
       @Value("${datastore.secretKey}") String secretKey,
       @Value("${datastore.endpoint}") String endpoint) {
@@ -196,7 +196,7 @@ public class DataStorageConfig {
    * @return {@link DataStorageService} object
    */
   @Bean
-  @ConditionalOnProperty(name = "datastore.type", havingValue = "minio")
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "s3-compatible")
   public DataStorageService minioDataStore(@Autowired BlobStore blobStore,
       @Value("${datastore.bucketPrefix}") String bucketPrefix,
       @Value("${datastore.bucketPostfix}") String bucketPostfix,
@@ -216,7 +216,7 @@ public class DataStorageConfig {
    * @return {@link BlobStore}
    */
   @Bean
-  @ConditionalOnProperty(name = "datastore.type", havingValue = "s3")
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "aws-s3")
   public BlobStore blobStore(@Value("${datastore.accessKey}") String accessKey,
       @Value("${datastore.secretKey}") String secretKey,
       @Value("${datastore.region}") String region) {
@@ -240,7 +240,7 @@ public class DataStorageConfig {
 
   @Bean
   @Primary
-  @ConditionalOnProperty(name = "datastore.type", havingValue = "s3")
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "aws-s3")
   public DataStorageService s3DataStore(@Autowired BlobStore blobStore,
       @Value("${datastore.bucketPrefix}") String bucketPrefix,
       @Value("${datastore.bucketPostfix}") String bucketPostfix,

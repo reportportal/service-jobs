@@ -92,7 +92,7 @@ rp:
 
 datastore:
   path: /data/storage
-  type: minio
+  type: s3-compatible
   endpoint: http://minio:9000
   accessKey:
   secretKey:
