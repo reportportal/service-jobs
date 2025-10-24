@@ -46,12 +46,12 @@ public class CleanLaunchJob extends BaseCleanJob {
       CleanLogJob cleanLogJob, IndexerServiceClient indexerServiceClient,
       ApplicationEventPublisher eventPublisher, SearchEngineClient searchEngineClient) {
     super(jdbcTemplate);
-    this.batchSize = batchSize;
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     this.cleanLogJob = cleanLogJob;
     this.indexerServiceClient = indexerServiceClient;
     this.eventPublisher = eventPublisher;
     this.searchEngineClient = searchEngineClient;
+    this.batchSize = batchSize > 65535 ? 65535 : batchSize;
   }
 
   @Override
