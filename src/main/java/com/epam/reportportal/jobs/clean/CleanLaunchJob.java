@@ -41,7 +41,7 @@ public class CleanLaunchJob extends BaseCleanJob {
   private final SearchEngineClient searchEngineClient;
 
   public CleanLaunchJob(
-      @Value("${rp.environment.variable.elements-counter.batch-size}") Integer batchSize,
+      @Value("${rp.environment.variable.batch-size:10000}") Integer batchSize,
       JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
       CleanLogJob cleanLogJob, IndexerServiceClient indexerServiceClient,
       ApplicationEventPublisher eventPublisher, SearchEngineClient searchEngineClient) {
