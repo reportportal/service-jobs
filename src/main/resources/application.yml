@@ -3,8 +3,7 @@ rp:
     flags:
   environment:
     variable:
-      elements-counter:
-        batch-size: 50
+      batch-size: 10000
       notification:
         expiredUser:
           ## 24 hours
