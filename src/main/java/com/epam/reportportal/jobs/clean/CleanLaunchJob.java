@@ -3,12 +3,12 @@ package com.epam.reportportal.jobs.clean;
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import com.epam.reportportal.elastic.SearchEngineClient;
 import com.google.common.collect.Lists;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,54 +41,50 @@ public class CleanLaunchJob extends BaseCleanJob {
   private final SearchEngineClient searchEngineClient;
 
   public CleanLaunchJob(
-      @Value("${rp.environment.variable.elements-counter.batch-size}") Integer batchSize,
+      @Value("${rp.environment.variable.batch-size:10000}") Integer batchSize,
       JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
       CleanLogJob cleanLogJob, IndexerServiceClient indexerServiceClient,
       ApplicationEventPublisher eventPublisher, SearchEngineClient searchEngineClient) {
     super(jdbcTemplate);
-    this.batchSize = batchSize;
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     this.cleanLogJob = cleanLogJob;
     this.indexerServiceClient = indexerServiceClient;
     this.eventPublisher = eventPublisher;
     this.searchEngineClient = searchEngineClient;
+    this.batchSize = batchSize > 65535 ? 65535 : batchSize;
   }
 
   @Override
   @Scheduled(cron = "${rp.environment.variable.clean.launch.cron}")
   @SchedulerLock(name = "cleanLaunch", lockAtMostFor = "24h")
   public void execute() {
-    removeLaunches();
+    getProjectsWithAttribute(KEEP_LAUNCHES)
+        .forEach(this::removeLaunches);
     cleanLogJob.removeLogs();
   }
 
-  private void removeLaunches() {
-    AtomicInteger counter = new AtomicInteger(0);
-    getProjectsWithAttribute(KEEP_LAUNCHES).forEach((projectId, duration) -> {
+  private void removeLaunches(Long projectId, Duration duration) {
+    try {
       final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
-      final List<Long> launchIds = getLaunchIds(projectId, lessThanDate);
-      if (!launchIds.isEmpty()) {
-        deleteClusters(launchIds);
-        //				final Long numberOfLaunchElements = countNumberOfLaunchElements(launchIds);
-        int deleted =
-            namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY, Map.of(IDS_PARAM, launchIds));
-        counter.addAndGet(deleted);
-        LOGGER.info("Delete {} launches for project {}", deleted, projectId);
-        // to avoid error message in analyzer log, doesn't find index
-        if (deleted > 0) {
-          indexerServiceClient.removeFromIndexLessThanLaunchDate(projectId, lessThanDate);
-          LOGGER.info("Send message for deletion to analyzer for project {}", projectId);
+      final List<Long> allLaunchIds = getLaunchIds(projectId, lessThanDate);
+      Lists.partition(allLaunchIds, batchSize)
+          .forEach(launchIds -> {
+            deleteClusters(launchIds);
+            int deleted = namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY, Map.of(IDS_PARAM, launchIds));
+            LOGGER.info("Delete {} launches for project {}", deleted, projectId);
+            // to avoid an error message in the analyzer log, doesn't find the index
+            if (deleted > 0) {
+              indexerServiceClient.removeFromIndexLessThanLaunchDate(projectId, lessThanDate);
+              LOGGER.info("Send message for deletion to analyzer for project {}", projectId);
 
-          deleteLogsFromSearchEngineByLaunchIdsAndProjectId(launchIds, projectId);
-
-          //					eventPublisher.publishEvent(new ElementsDeletedEvent(launchIds,
-          //					projectId, numberOfLaunchElements));
-          //					LOGGER.info("Send event with elements deleted number {} for
-          //					project {}", deleted, projectId);
-        }
-      }
-    });
+              deleteLogsFromSearchEngineByLaunchIdsAndProjectId(launchIds, projectId);
+            }
+          });
+    } catch (Exception e) {
+      LOGGER.error("Error occurred while removing launches for project {}", projectId, e);
+    }
   }
+
 
   private void deleteLogsFromSearchEngineByLaunchIdsAndProjectId(List<Long> launchIds,
       Long projectId) {
