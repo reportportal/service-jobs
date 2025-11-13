@@ -61,6 +61,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
+  private static final String PARAM_PROJECT_ID = "projectId";
   private static final String RETENTION_PERIOD = "retentionPeriod";
 
   private static final String USER_DELETION_TEMPLATE = "userDeletionNotification";
@@ -117,6 +118,13 @@ public class DeleteExpiredUsersJob extends BaseJob {
       JOIN project p ON pu.project_id = p.id
       JOIN organization o ON p.organization_id = o.id
       WHERE o.owner_id IS NULL AND pu.user_id IN (:userIds)
+      """;
+
+  private static final String QUERY_EXISTS_LAUNCH = """
+      SELECT EXISTS (
+          SELECT 1 FROM launch
+          WHERE project_id = :projectId
+      )
       """;
 
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
@@ -240,8 +248,19 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private void deleteProjectAssociatedData(Long projectId) {
     deleteAttachmentsByProjectId(projectId);
     deleteProjectIssueTypes(projectId);
-    indexerServiceClient.removeSuggest(projectId);
-    indexerServiceClient.deleteIndex(projectId);
+
+    if (projectHasLaunches(projectId)) {
+      indexerServiceClient.removeSuggest(projectId);
+      indexerServiceClient.deleteIndex(projectId);
+    }
+  }
+
+  private boolean projectHasLaunches(Long projectId) {
+    var params = new MapSqlParameterSource()
+        .addValue(PARAM_PROJECT_ID, projectId);
+    Boolean exists = namedParameterJdbcTemplate
+        .queryForObject(QUERY_EXISTS_LAUNCH, params, Boolean.class);
+    return Boolean.TRUE.equals(exists);
   }
 
   private void deleteUsersByIds(List<Long> userIds) {
@@ -255,13 +274,13 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private void deleteProjectIssueTypes(Long projectId) {
     MapSqlParameterSource params = new MapSqlParameterSource();
-    params.addValue("projectId", projectId);
+    params.addValue(PARAM_PROJECT_ID, projectId);
     namedParameterJdbcTemplate.update(DELETE_PROJECT_ISSUE_TYPES, params);
   }
 
   private void deleteAttachmentsByProjectId(Long projectId) {
     MapSqlParameterSource params = new MapSqlParameterSource();
-    params.addValue("projectId", projectId);
+    params.addValue(PARAM_PROJECT_ID, projectId);
     namedParameterJdbcTemplate.update(DELETE_ATTACHMENTS_BY_PROJECT, params);
   }
 
