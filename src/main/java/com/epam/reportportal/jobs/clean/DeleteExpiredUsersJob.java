@@ -61,6 +61,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
+  private static final String PARAM_PROJECT_ID = "projectId";
   private static final String RETENTION_PERIOD = "retentionPeriod";
 
   private static final String USER_DELETION_TEMPLATE = "userDeletionNotification";
@@ -99,9 +100,9 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private static final String DELETE_USERS = "DELETE FROM users WHERE id IN (:userIds)";
 
   private static final String SELECT_USERS_ATTACHMENTS = """
-         SELECT attachment FROM users WHERE (id IN (:userIds) AND attachment IS NOT NULL)\s
-         UNION\s
-         SELECT attachment_thumbnail FROM users WHERE (id IN (:userIds) AND attachment_thumbnail IS NOT NULL)""";
+      SELECT attachment FROM users WHERE (id IN (:userIds) AND attachment IS NOT NULL)\s
+      UNION\s
+      SELECT attachment_thumbnail FROM users WHERE (id IN (:userIds) AND attachment_thumbnail IS NOT NULL)""";
 
   private static final String DELETE_PROJECTS_BY_ID_LIST =
       "DELETE FROM project WHERE id IN (:projectIds)";
@@ -111,6 +112,13 @@ public class DeleteExpiredUsersJob extends BaseJob {
       FROM project_user pu\s
       JOIN project p ON pu.project_id = p.id\s
       WHERE p.project_type != 'PERSONAL' AND pu.user_id IN (:userIds)""";
+
+  private static final String QUERY_EXISTS_LAUNCH = """
+      SELECT EXISTS (
+          SELECT 1 FROM launch
+          WHERE project_id = :projectId
+      )
+      """;
 
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
   private Long retentionPeriod;
@@ -212,8 +220,19 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private void deleteProjectAssociatedData(Long projectId) {
     deleteAttachmentsByProjectId(projectId);
     deleteProjectIssueTypes(projectId);
-    indexerServiceClient.removeSuggest(projectId);
-    indexerServiceClient.deleteIndex(projectId);
+
+    if (projectHasLaunches(projectId)) {
+      indexerServiceClient.removeSuggest(projectId);
+      indexerServiceClient.deleteIndex(projectId);
+    }
+  }
+
+  private boolean projectHasLaunches(Long projectId) {
+    var params = new MapSqlParameterSource()
+        .addValue(PARAM_PROJECT_ID, projectId);
+    Boolean exists = namedParameterJdbcTemplate
+        .queryForObject(QUERY_EXISTS_LAUNCH, params, Boolean.class);
+    return Boolean.TRUE.equals(exists);
   }
 
   private void deleteUsersByIds(List<Long> userIds) {
@@ -227,13 +246,13 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   private void deleteProjectIssueTypes(Long projectId) {
     MapSqlParameterSource params = new MapSqlParameterSource();
-    params.addValue("projectId", projectId);
+    params.addValue(PARAM_PROJECT_ID, projectId);
     namedParameterJdbcTemplate.update(DELETE_PROJECT_ISSUE_TYPES, params);
   }
 
   private void deleteAttachmentsByProjectId(Long projectId) {
     MapSqlParameterSource params = new MapSqlParameterSource();
-    params.addValue("projectId", projectId);
+    params.addValue(PARAM_PROJECT_ID, projectId);
     namedParameterJdbcTemplate.update(DELETE_ATTACHMENTS_BY_PROJECT, params);
   }
 
@@ -259,8 +278,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
   }
 
   private List<Long> getProjectIds(List<UserProject> userProjects) {
-    return userProjects.stream().filter(Objects::nonNull).map(UserProject::getProjectId)
-        .collect(Collectors.toList());
+    return userProjects.stream()
+        .filter(Objects::nonNull)
+        .map(UserProject::getProjectId)
+        .filter(projectId -> projectId > 0)
+        .toList();
   }
 
   private static class UserProject {
