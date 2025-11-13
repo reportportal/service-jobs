@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -67,7 +68,7 @@ class DeleteExpiredUsersJobTest {
   }
 
   @Test
-  void execute_WhenExpiredUsersFound_ShouldDeleteUsersAndPublishEvents() throws Exception {
+  void executeWhenExpiredUsersFoundShouldDeleteUsersAndPublishEvents() throws Exception {
     // Given
     DeleteExpiredUsersJob.User user1 = createUser(1L, "user1@test.com");
     DeleteExpiredUsersJob.User user2 = createUser(2L, "user2@test.com");
@@ -79,14 +80,20 @@ class DeleteExpiredUsersJobTest {
     );
     List<String> userAttachments = List.of("attachment1", "attachment2");
 
-    when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+    when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class),
+        any(RowMapper.class)))
         .thenReturn(expiredUsers);
-    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class), eq(Long.class)))
+    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class),
+        eq(Long.class)))
         .thenReturn(personalProjectIds);
     when(namedParameterJdbcTemplate.query(anyString(), any(Map.class), any(RowMapper.class)))
         .thenReturn(nonPersonalProjects);
-    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class), eq(String.class)))
+    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class),
+        eq(String.class)))
         .thenReturn(userAttachments);
+    when(namedParameterJdbcTemplate.queryForObject(anyString(), isA(MapSqlParameterSource.class),
+        eq(Boolean.class)))
+        .thenReturn(true);
 
     // When
     deleteExpiredUsersJob.execute();
@@ -132,10 +139,11 @@ class DeleteExpiredUsersJobTest {
   }
 
   @Test
-  void execute_WhenNoExpiredUsersFound_ShouldNotDeleteAnything() throws Exception {
+  void executeWhenNoExpiredUsersFoundShouldNotDeleteAnything() throws Exception {
     // Given
     List<DeleteExpiredUsersJob.User> emptyUsers = Collections.emptyList();
-    when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+    when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class),
+        any(RowMapper.class)))
         .thenReturn(emptyUsers);
 
     // When
@@ -151,13 +159,14 @@ class DeleteExpiredUsersJobTest {
     verify(dataStorageService, never()).deleteAll(anyList());
     verify(indexerServiceClient, never()).removeSuggest(anyLong());
     verify(indexerServiceClient, never()).deleteIndex(anyLong());
-    verify(namedParameterJdbcTemplate, never()).update(anyString(), any(MapSqlParameterSource.class));
+    verify(namedParameterJdbcTemplate, never()).update(anyString(),
+        any(MapSqlParameterSource.class));
     verify(messageBus, times(1)).publishActivity(any());
     verify(messageBus, times(1)).publishEmailNotificationEvents(anyList());
   }
 
   @Test
-  void execute_WhenInvalidRetentionPeriod_ShouldNotDeleteUsers() throws Exception {
+  void executeWhenInvalidRetentionPeriodShouldNotDeleteUsers() throws Exception {
     // Given
     setRetentionPeriod(-1L);
 
@@ -171,14 +180,15 @@ class DeleteExpiredUsersJobTest {
     verify(dataStorageService, never()).deleteAll(anyList());
     verify(indexerServiceClient, never()).removeSuggest(anyLong());
     verify(indexerServiceClient, never()).deleteIndex(anyLong());
-    verify(namedParameterJdbcTemplate, never()).update(anyString(), any(MapSqlParameterSource.class));
+    verify(namedParameterJdbcTemplate, never()).update(anyString(),
+        any(MapSqlParameterSource.class));
 
     verify(messageBus, never()).publishActivity(any());
     verify(messageBus, never()).publishEmailNotificationEvents(anyList());
   }
 
   @Test
-  void execute_WhenDataStorageServiceThrowsException_ShouldContinueExecution() throws Exception {
+  void executeWhenDataStorageServiceThrowsExceptionShouldContinueExecution() throws Exception {
     // Given
     DeleteExpiredUsersJob.User user = createUser(1L, "user@test.com");
     List<DeleteExpiredUsersJob.User> expiredUsers = List.of(user);
@@ -186,14 +196,20 @@ class DeleteExpiredUsersJobTest {
     List<DeleteExpiredUsersJob.ProjectOrganization> nonPersonalProjects = Collections.emptyList();
     List<String> userAttachments = List.of("attachment1");
 
-    when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+    when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class),
+        any(RowMapper.class)))
         .thenReturn(expiredUsers);
-    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class), eq(Long.class)))
+    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class),
+        eq(Long.class)))
         .thenReturn(personalProjectIds);
     when(namedParameterJdbcTemplate.query(anyString(), any(Map.class), any(RowMapper.class)))
         .thenReturn(nonPersonalProjects);
-    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class), eq(String.class)))
+    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class),
+        eq(String.class)))
         .thenReturn(userAttachments);
+    when(namedParameterJdbcTemplate.queryForObject(anyString(), isA(MapSqlParameterSource.class),
+        eq(Boolean.class)))
+        .thenReturn(true);
     doThrow(new RuntimeException("Storage error")).when(dataStorageService).deleteAll(anyList());
 
     // When
@@ -212,7 +228,7 @@ class DeleteExpiredUsersJobTest {
   }
 
   @Test
-  void execute_WhenUsersHaveNoPersonalProjects_ShouldOnlyDeleteUsers() throws Exception {
+  void executeWhenUsersHaveNoPersonalProjectsShouldOnlyDeleteUsers() throws Exception {
     // Given
     DeleteExpiredUsersJob.User user = createUser(1L, "user@test.com");
     List<DeleteExpiredUsersJob.User> expiredUsers = List.of(user);
@@ -222,13 +238,16 @@ class DeleteExpiredUsersJobTest {
     );
     List<String> userAttachments = List.of("attachment1");
 
-    when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+    when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class),
+        any(RowMapper.class)))
         .thenReturn(expiredUsers);
-    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class), eq(Long.class)))
+    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class),
+        eq(Long.class)))
         .thenReturn(personalProjectIds);
     when(namedParameterJdbcTemplate.query(anyString(), any(Map.class), any(RowMapper.class)))
         .thenReturn(nonPersonalProjects);
-    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class), eq(String.class)))
+    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class),
+        eq(String.class)))
         .thenReturn(userAttachments);
 
     // When
@@ -268,7 +287,46 @@ class DeleteExpiredUsersJobTest {
   }
 
   @Test
-  void execute_ShouldPublishCorrectDeletionCounts() {
+  void executeWhenProjectsHaveNoLaunchesShouldNotCallIndexerService() throws Exception {
+    // Given
+    DeleteExpiredUsersJob.User user = createUser(1L, "user@test.com");
+    List<DeleteExpiredUsersJob.User> expiredUsers = List.of(user);
+    List<Long> personalProjectIds = List.of(10L, 20L);
+    List<DeleteExpiredUsersJob.ProjectOrganization> nonPersonalProjects = Collections.emptyList();
+    List<String> userAttachments = List.of("attachment1");
+
+    when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class),
+        any(RowMapper.class)))
+        .thenReturn(expiredUsers);
+    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class),
+        eq(Long.class)))
+        .thenReturn(personalProjectIds);
+    when(namedParameterJdbcTemplate.query(anyString(), any(Map.class), any(RowMapper.class)))
+        .thenReturn(nonPersonalProjects);
+    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class),
+        eq(String.class)))
+        .thenReturn(userAttachments);
+    when(namedParameterJdbcTemplate.queryForObject(anyString(), isA(MapSqlParameterSource.class),
+        eq(Boolean.class)))
+        .thenReturn(false);
+
+    // When
+    deleteExpiredUsersJob.execute();
+
+    // Then
+    assertNotNull(deleteExpiredUsersJob);
+    assertEquals(1, expiredUsers.size());
+    assertEquals(2, personalProjectIds.size());
+
+    verify(dataStorageService, times(1)).deleteAll(anyList());
+    verify(indexerServiceClient, never()).removeSuggest(anyLong());
+    verify(indexerServiceClient, never()).deleteIndex(anyLong());
+    verify(messageBus, times(2)).publishActivity(any());
+    verify(messageBus, times(1)).publishEmailNotificationEvents(anyList());
+  }
+
+  @Test
+  void executeShouldPublishCorrectDeletionCounts() {
     // Given
     DeleteExpiredUsersJob.User user1 = createUser(1L, "user1@test.com");
     DeleteExpiredUsersJob.User user2 = createUser(2L, "user2@test.com");
@@ -281,14 +339,20 @@ class DeleteExpiredUsersJobTest {
     );
     List<String> userAttachments = List.of("attachment1", "attachment2", "attachment3");
 
-    when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+    when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class),
+        any(RowMapper.class)))
         .thenReturn(expiredUsers);
-    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class), eq(Long.class)))
+    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class),
+        eq(Long.class)))
         .thenReturn(personalProjectIds);
     when(namedParameterJdbcTemplate.query(anyString(), any(Map.class), any(RowMapper.class)))
         .thenReturn(nonPersonalProjects);
-    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class), eq(String.class)))
+    when(namedParameterJdbcTemplate.queryForList(anyString(), any(MapSqlParameterSource.class),
+        eq(String.class)))
         .thenReturn(userAttachments);
+    when(namedParameterJdbcTemplate.queryForObject(anyString(), isA(MapSqlParameterSource.class),
+        eq(Boolean.class)))
+        .thenReturn(true);
 
     // When
     deleteExpiredUsersJob.execute();
@@ -329,7 +393,8 @@ class DeleteExpiredUsersJobTest {
     return user;
   }
 
-  private DeleteExpiredUsersJob.ProjectOrganization createProjectOrganization(Long projectId, Long organizationId) {
+  private DeleteExpiredUsersJob.ProjectOrganization createProjectOrganization(Long projectId,
+      Long organizationId) {
     DeleteExpiredUsersJob.ProjectOrganization projectOrg = new DeleteExpiredUsersJob.ProjectOrganization();
     projectOrg.setProjectId(projectId);
     projectOrg.setOrganizationId(organizationId);
