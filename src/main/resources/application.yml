@@ -34,6 +34,11 @@ rp:
         events:
           ## 24 hours
           cron: '0 0 */24 * * *'
+        deletedTestItems:
+          ## Every hour
+          cron: '0 0 * * * *'
+          ## Retention period in hours (default: 12 hours)
+          retentionPeriod: 12
       storage:
         project:
           ## 1 minute
