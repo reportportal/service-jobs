@@ -16,6 +16,5 @@ ENV APP_DIR=/usr/app
 ENV JAVA_OPTS="-Xmx1g -XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=70 -Djava.security.egd=file:/dev/./urandom"
 WORKDIR $APP_DIR
 COPY --from=build $APP_DIR/build/libs/service-jobs-*exec.jar .
-VOLUME ["/tmp"]
 EXPOSE 8686
 ENTRYPOINT exec java ${JAVA_OPTS} -jar ${APP_DIR}/service-jobs-*exec.jar
