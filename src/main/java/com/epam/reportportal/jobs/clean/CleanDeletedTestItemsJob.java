@@ -36,7 +36,7 @@ public class CleanDeletedTestItemsJob extends BaseJob {
 
   private static final String DELETE_OLD_RECORDS_QUERY = """
       DELETE FROM test_item_deleted
-      WHERE deletion_date < ?::TIMESTAMP
+      WHERE deleted_at < ?::TIMESTAMP
       """;
 
   @Value("${rp.environment.variable.clean.deletedTestItems.retentionPeriod:12}")
