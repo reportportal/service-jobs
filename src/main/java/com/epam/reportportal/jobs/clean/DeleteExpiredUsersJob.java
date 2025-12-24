@@ -19,9 +19,7 @@ package com.epam.reportportal.jobs.clean;
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import com.epam.reportportal.jobs.BaseJob;
 import com.epam.reportportal.model.EmailNotificationRequest;
-import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
-import com.epam.reportportal.model.activity.event.UnassignUserEvent;
-import com.epam.reportportal.model.activity.event.UserDeletedEvent;
+import com.epam.reportportal.model.event.domain.UsersDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
 import com.epam.reportportal.storage.DataStorageService;
 import com.epam.reportportal.utils.DataStorageUtils;
@@ -47,8 +45,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 /**
- * Deleting Users and their personal organizations by retention policy. Personal organizations and their projects are
- * cascade deleted when users are deleted.
+ * Deleting Users and their personal organizations by retention policy. Personal organizations and
+ * their projects are cascade deleted when users are deleted.
  *
  * @author Andrei Piankouski
  */
@@ -159,13 +157,10 @@ public class DeleteExpiredUsersJob extends BaseJob {
     List<User> users = findExpiredUsers();
     List<Long> userIds = getUserIds(users);
     List<Long> personalProjectIds = getPersonalProjectIds(userIds);
-    List<ProjectOrganization> nonPersonalProjects = findNonPersonalProjectsByUserIds(userIds);
 
     deleteUsersPhoto(userIds);
     personalProjectIds.forEach(this::deleteProjectAssociatedData);
-    publishUnassignUserEvents(nonPersonalProjects);
     deleteUsersByIds(userIds);
-    publishProjectDeletedEvent(personalProjectIds);
     publishEmailNotificationEvents(getUserEmails(users));
 
     LOGGER.info("{} - users was deleted due to retention policy", userIds.size());
@@ -188,21 +183,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
     }
   }
 
-  private void publishProjectDeletedEvent(List<Long> personalProjectIds) {
-    messageBus.publishActivity(new ProjectDeletedEvent(personalProjectIds.size()));
-  }
-
   private void publishEmailNotificationEvents(List<String> userEmails) {
     List<EmailNotificationRequest> notifications = userEmails.stream()
         .map(recipient -> new EmailNotificationRequest(recipient, USER_DELETION_TEMPLATE))
         .toList();
     messageBus.publishEmailNotificationEvents(notifications);
-  }
-
-  private void publishUnassignUserEvents(List<ProjectOrganization> nonPersonalProjects) {
-    nonPersonalProjects.forEach(
-        projectOrg -> messageBus.publishActivity(
-            new UnassignUserEvent(projectOrg.getProjectId(), projectOrg.getOrganizationId())));
   }
 
   private List<ProjectOrganization> findNonPersonalProjectsByUserIds(List<Long> userIds) {
@@ -268,7 +253,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
       MapSqlParameterSource params = new MapSqlParameterSource();
       params.addValue(USER_IDS, userIds);
       namedParameterJdbcTemplate.update(DELETE_USERS, params);
-      messageBus.publishActivity(new UserDeletedEvent(userIds.size()));
+      messageBus.publishDomainEvent(new UsersDeletedEvent(userIds.size()));
     }
   }
 
