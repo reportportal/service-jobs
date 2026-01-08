@@ -1,5 +1,5 @@
 plugins {
-    id 'org.springframework.boot' version '3.4.12'
+    id 'org.springframework.boot' version '3.5.9'
     id 'io.spring.dependency-management' version '1.1.4'
     id 'java'
 }
@@ -50,7 +50,7 @@ ext['log4j2.version'] = '2.21.1'
 ext['log4j-to-slf4j.version'] = '2.21.1'
 ext['postgresql.version'] = '42.6.1'
 ext['snakeyaml.version'] = '2.2'
-ext['spring-boot.version'] = '3.4.12'
+ext['spring-boot.version'] = '3.5.9'
 
 dependencies {
 
@@ -87,10 +87,10 @@ dependencies {
     implementation ('org.apache.httpcomponents:httpclient:4.5.14') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
-    implementation 'com.google.guava:guava:33.3.0-jre'
+    implementation 'com.google.guava:guava:33.5.0-jre'
 
     implementation "com.rabbitmq:http-client:5.4.0"
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.4'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 
     implementation 'software.amazon.awssdk:aws-core:2.38.9'
     implementation 'software.amazon.awssdk:sts:2.38.9'
