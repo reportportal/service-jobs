@@ -64,8 +64,8 @@ dependencies {
     implementation 'org.apache.tomcat.embed:tomcat-embed-el:11.0.14'
     implementation 'org.apache.tomcat.embed:tomcat-embed-websocket:11.0.14'
 
-    implementation 'ch.qos.logback:logback-classic'
-    implementation 'ch.qos.logback:logback-core'
+    implementation 'ch.qos.logback:logback-classic:1.5.27'
+    implementation 'ch.qos.logback:logback-core:1.5.27'
     implementation 'org.springframework:spring-webmvc'
     implementation 'org.springframework:spring-web'
     implementation 'org.apache.commons:commons-compress:1.28.0'
@@ -93,7 +93,18 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.4'
 
     implementation 'software.amazon.awssdk:aws-core:2.38.9'
-    implementation 'software.amazon.awssdk:sts:2.38.9'
+    implementation 'software.amazon.awssdk:sts:2.41.19'
+
+    implementation 'io.netty:netty-buffer:4.1.130.Final'
+    implementation 'io.netty:netty-codec:4.1.130.Final'
+    implementation 'io.netty:netty-codec-http:4.1.130.Final'
+    implementation 'io.netty:netty-codec-http2:4.1.130.Final'
+    implementation 'io.netty:netty-common:4.1.130.Final'
+    implementation 'io.netty:netty-handler:4.1.130.Final'
+    implementation 'io.netty:netty-resolver:4.1.130.Final'
+    implementation 'io.netty:netty-transport:4.1.130.Final'
+    implementation 'io.netty:netty-transport-classes-epoll:4.1.130.Final'
+    implementation 'io.netty:netty-transport-native-unix-common:4.1.130.Final'
 
     runtimeOnly 'org.postgresql:postgresql'
 
