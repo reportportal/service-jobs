@@ -18,25 +18,34 @@ apply from: "$scriptsUrl/build-info.gradle"
 apply from: "$scriptsUrl/release-service.gradle"
 apply from: "$scriptsUrl/signing.gradle"
 
+java {
+    targetCompatibility = JavaVersion.VERSION_25
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
 tasks.withType(JavaCompile).configureEach {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+    options.encoding = "UTF-8"
+    options.compilerArgs << "-parameters"
 }
 
 wrapper {
-    gradleVersion = '8.10.2'
+    gradleVersion = '9.3.1'
 }
 
 bootJar {
     project.hasProperty('gcp') ? getArchiveFileName().set('app.jar') : archiveClassifier.set('exec')
 }
-jar.enabled(true)
+jar.enabled = true
 jar.archiveClassifier.set('')
 
 repositories {
-    mavenCentral { url "https://repo1.maven.org/maven2" }
-    maven { url 'https://repo.spring.io/libs-milestone' }
-    maven { url 'https://jitpack.io' }
+    mavenCentral { url = "https://repo1.maven.org/maven2" }
+    maven { url = 'https://repo.spring.io/libs-milestone' }
+    maven { url = 'https://jitpack.io' }
 }
 
 processResources {
@@ -84,7 +93,7 @@ dependencies {
     implementation 'org.apache.jclouds.api:filesystem:2.5.0'
     //Needed for correct jcloud work
     implementation 'com.google.code.gson:gson:2.8.9'
-    implementation ('org.apache.httpcomponents:httpclient:4.5.14') {
+    implementation('org.apache.httpcomponents:httpclient:4.5.14') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
     implementation 'com.google.guava:guava:33.5.0-jre'
@@ -100,9 +109,10 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testImplementation 'org.junit.jupiter:junit-jupiter-params'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-    testImplementation 'org.mockito:mockito-core:5.7.0'
-    testImplementation 'org.mockito:mockito-junit-jupiter:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.mockito:mockito-core:5.21.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.21.0'
 }
 
 test {
