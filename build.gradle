@@ -59,6 +59,7 @@ dependencies {
     implementation 'io.netty:netty-codec-http:4.1.132.Final'
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:11.0.21'
     implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
+    implementation 'ch.qos.logback:logback-classic:1.5.32'
     implementation 'ch.qos.logback:logback-core:1.5.32'
 
     implementation 'org.json:json:20250517'
@@ -71,8 +72,6 @@ dependencies {
     implementation 'org.apache.tomcat.embed:tomcat-embed-el:11.0.20'
     implementation 'org.apache.tomcat.embed:tomcat-embed-websocket:11.0.20'
 
-    implementation 'ch.qos.logback:logback-classic'
-    implementation 'ch.qos.logback:logback-core'
     implementation 'org.springframework:spring-webmvc'
     implementation 'org.springframework:spring-web'
     implementation 'org.apache.commons:commons-compress:1.28.0'
