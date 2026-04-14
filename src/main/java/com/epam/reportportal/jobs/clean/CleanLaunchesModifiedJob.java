@@ -26,48 +26,47 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * Cleans up old records from the test_item_deleted table. This job deletes records that are older
- * than the configured retention period to prevent the table from growing.
+ * Cleans up old records from the launches_modified table. This job deletes records that are older
+ * than the configured retention period so the table does not grow without bound after Logstash (or
+ * similar) has consumed the change markers.
  *
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
 @Service
-public class CleanDeletedTestItemsJob extends BaseJob {
+public class CleanLaunchesModifiedJob extends BaseJob {
 
   private static final String DELETE_OLD_RECORDS_QUERY = """
-      DELETE FROM test_item_deleted
-      WHERE deleted_at < ?::TIMESTAMP
+      DELETE FROM launches_modified
+      WHERE created_at < ?::TIMESTAMP
       """;
 
-  @Value("${rp.environment.variable.clean.deletedTestItems.retentionPeriod:12}")
+  @Value("${rp.environment.variable.clean.launchesModified.retentionPeriod:24}")
   private Long retentionPeriodHours;
 
-  public CleanDeletedTestItemsJob(JdbcTemplate jdbcTemplate) {
+  public CleanLaunchesModifiedJob(JdbcTemplate jdbcTemplate) {
     super(jdbcTemplate);
   }
 
   /**
-   * Executes the cleanup job to remove old records from test_item_deleted table. Deletes all
-   * records that are older than the configured retention period.
+   * Executes the cleanup job to remove old records from launches_modified. Deletes all records
+   * older than the configured retention period.
    */
   @Override
-  @Scheduled(cron = "${rp.environment.variable.clean.deletedTestItems.cron:0 0 * * * *}")
-  @SchedulerLock(name = "cleanDeletedTestItems", lockAtMostFor = "1h")
+  @Scheduled(cron = "${rp.environment.variable.clean.launchesModified.cron:0 0 * * * *}")
+  @SchedulerLock(name = "cleanLaunchesModified", lockAtMostFor = "1h")
   public void execute() {
-    cleanOldDeletedTestItems();
+    cleanOldLaunchesModified();
   }
 
   /**
-   * Removes test item deletion records older than the configured retention period. This helps
-   * maintain the test_item_deleted table at a manageable size.
+   * Removes launch modification markers older than the configured retention period.
    */
-  private void cleanOldDeletedTestItems() {
+  private void cleanOldLaunchesModified() {
     LocalDateTime cutoffDate = LocalDateTime.now(ZoneOffset.UTC).minusHours(retentionPeriodHours);
     int deletedCount = jdbcTemplate.update(DELETE_OLD_RECORDS_QUERY, cutoffDate);
     LOGGER.info(
-        "Deleted {} 'test_item_deleted' records older than {} hours, cutoff date: {}",
+        "Deleted {} 'launches_modified' records older than {} hours, cutoff date: {}",
         deletedCount, retentionPeriodHours, cutoffDate
     );
   }
 }
-
