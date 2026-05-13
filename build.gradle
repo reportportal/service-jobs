@@ -49,7 +49,7 @@ processResources {
 
 ext['log4j2.version'] = '2.21.1'
 ext['log4j-to-slf4j.version'] = '2.21.1'
-ext['postgresql.version'] = '42.6.1'
+ext['postgresql.version'] = '42.7.11'
 ext['snakeyaml.version'] = '2.2'
 ext['spring-boot.version'] = '3.5.14'
 
