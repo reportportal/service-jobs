@@ -35,8 +35,10 @@ import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.blobstore.ContainerNotFoundException;
 import org.jclouds.filesystem.reference.FilesystemConstants;
+import org.jclouds.location.reference.LocationConstants;
 import org.jclouds.rest.ConfiguresHttpApi;
 import org.jclouds.s3.S3Client;
+import org.jclouds.s3.reference.S3Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -53,17 +55,15 @@ import org.springframework.context.annotation.Primary;
 public class DataStorageConfig {
 
   /**
-   * Amazon has a general work flow they publish that allows clients to always find the correct
-   * URL endpoint for a given bucket:
-   * 1) ask s3.amazonaws.com for the bucket location
-   * 2) use the url returned to make the container specific request (get/put, etc)
-   * Jclouds cache the results from the first getBucketLocation call and use that
-   * region-specific URL, as needed.
-   * In this custom implementation of {@link AWSS3HttpApiModule} we are providing location
-   * from environment variable, so that we don't need to make getBucketLocation call
+   * Amazon has a general work flow they publish that allows clients to always find the correct URL endpoint for a given
+   * bucket: 1) ask s3.amazonaws.com for the bucket location 2) use the url returned to make the container specific
+   * request (get/put, etc) Jclouds cache the results from the first getBucketLocation call and use that region-specific
+   * URL, as needed. In this custom implementation of {@link AWSS3HttpApiModule} we are providing location from
+   * environment variable, so that we don't need to make getBucketLocation call
    */
   @ConfiguresHttpApi
   private static class CustomBucketToRegionModule extends AWSS3HttpApiModule {
+
     private final String region;
 
     public CustomBucketToRegionModule(String region) {
@@ -79,7 +79,7 @@ public class DataStorageConfig {
         return new CacheLoader<>() {
 
           @Override
-          @SuppressWarnings({ "Guava", "NullableProblems" })
+          @SuppressWarnings({"Guava", "NullableProblems"})
           public Optional<String> load(String bucket) {
             if (CustomBucketToRegionModule.this.region != null) {
               return Optional.of(CustomBucketToRegionModule.this.region);
@@ -205,6 +205,64 @@ public class DataStorageConfig {
     return new S3DataStorageService(blobStore, bucketPrefix, bucketPostfix, defaultBucketName,
         featureFlagHandler
     );
+  }
+
+  /**
+   * Creates BlobStore bean to work with SeaweedFS.
+   *
+   * <p>Uses the generic {@code s3} jclouds provider with a custom {@code endpoint}. Signing is
+   * forced to AWS Signature Version 4 ({@link S3Constants#PROPERTY_SIGNER_VERSION}) because SigV2 canonicalizes the
+   * URL-encoded path (e.g. {@code /bucket/Azure%20DevOps}), while SeaweedFS verifies the signature against the decoded
+   * path ({@code /bucket/Azure DevOps}), causing a {@code SignatureDoesNotMatch} → 403 →
+   * {@code ProtocolException: Server rejected operation} during the {@code Expect: 100-continue} preflight.
+   *
+   * @param accessKey access key
+   * @param secretKey secret key
+   * @param endpoint  SeaweedFS S3 gateway endpoint URL
+   * @param region    region used for SigV4 credential scope (must match the backend expectation, e.g.
+   *                  {@code us-east-1})
+   * @return {@link BlobStore}
+   */
+  @Bean
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "seaweedfs")
+  public BlobStore seaweedFsBlobStore(@Value("${datastore.accessKey}") String accessKey,
+      @Value("${datastore.secretKey}") String secretKey,
+      @Value("${datastore.endpoint}") String endpoint,
+      @Value("${datastore.region:eu-central-1}") String region) {
+
+    Properties overrides = new Properties();
+    overrides.setProperty(S3Constants.PROPERTY_S3_VIRTUAL_HOST_BUCKETS, "false");
+    overrides.setProperty(S3Constants.PROPERTY_SIGNER_VERSION, "4");
+    overrides.setProperty(LocationConstants.PROPERTY_REGION, region);
+
+    BlobStoreContext blobStoreContext = ContextBuilder.newBuilder("s3")
+        .endpoint(endpoint)
+        .credentials(accessKey, secretKey)
+        .overrides(overrides)
+        .buildView(BlobStoreContext.class);
+
+    return blobStoreContext.getBlobStore();
+  }
+
+  /**
+   * Creates DataStorageService bean to work with SeaweedFS.
+   *
+   * @param blobStore          {@link BlobStore} object
+   * @param bucketPrefix       prefix for bucket name
+   * @param bucketPostfix      postfix for bucket name
+   * @param defaultBucketName  name of default bucket to use
+   * @param featureFlagHandler instance of {@link FeatureFlagHandler} to check enabled features
+   * @return {@link DataStorageService} object
+   */
+  @Bean
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "seaweedfs")
+  public DataStorageService seaweedFsDataStore(@Autowired BlobStore blobStore,
+      @Value("${datastore.bucketPrefix}") String bucketPrefix,
+      @Value("${datastore.bucketPostfix}") String bucketPostfix,
+      @Value("${datastore.defaultBucketName}") String defaultBucketName,
+      FeatureFlagHandler featureFlagHandler) {
+    return new S3DataStorageService(blobStore, bucketPrefix, bucketPostfix, defaultBucketName,
+        featureFlagHandler, true);
   }
 
   /**

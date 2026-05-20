@@ -18,6 +18,8 @@ package com.epam.reportportal.storage;
 
 import com.epam.reportportal.utils.FeatureFlag;
 import com.epam.reportportal.utils.FeatureFlagHandler;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -40,6 +42,7 @@ public class S3DataStorageService implements DataStorageService {
   private final String bucketPrefix;
   private final String bucketPostfix;
   private final String defaultBucketName;
+  private final boolean legacyEncodedKeyFallback;
 
   private final FeatureFlagHandler featureFlagHandler;
 
@@ -56,11 +59,18 @@ public class S3DataStorageService implements DataStorageService {
    */
   public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String bucketPostfix,
       String defaultBucketName, FeatureFlagHandler featureFlagHandler) {
+    this(blobStore, bucketPrefix, bucketPostfix, defaultBucketName, featureFlagHandler, false);
+  }
+
+  public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String bucketPostfix,
+      String defaultBucketName, FeatureFlagHandler featureFlagHandler,
+      boolean legacyEncodedKeyFallback) {
     this.blobStore = blobStore;
     this.bucketPrefix = bucketPrefix;
     this.bucketPostfix = bucketPostfix;
     this.defaultBucketName = defaultBucketName;
     this.featureFlagHandler = featureFlagHandler;
+    this.legacyEncodedKeyFallback = legacyEncodedKeyFallback;
   }
 
   @Override
@@ -69,7 +79,16 @@ public class S3DataStorageService implements DataStorageService {
       return;
     }
     if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-      removeFiles(defaultBucketName, paths);
+      List<String> keys = new ArrayList<>(paths);
+      if (legacyEncodedKeyFallback) {
+        for (String path : paths) {
+          String legacyKey = urlEncodeKey(path);
+          if (!legacyKey.equals(path)) {
+            keys.add(legacyKey);
+          }
+        }
+      }
+      removeFiles(defaultBucketName, keys);
     } else {
       Map<String, List<String>> bucketPathMap = new HashMap<>();
       for (String path : paths) {
@@ -84,11 +103,29 @@ public class S3DataStorageService implements DataStorageService {
           bucketPaths.add(cutPath);
           bucketPathMap.put(bucket, bucketPaths);
         }
+        if (legacyEncodedKeyFallback) {
+          String legacyKey = urlEncodeKey(cutPath);
+          if (!legacyKey.equals(cutPath)) {
+            bucketPathMap.get(bucket).add(legacyKey);
+          }
+        }
       }
       for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
         removeFiles(bucketPrefix + bucketPaths.getKey() + bucketPostfix, bucketPaths.getValue());
       }
     }
+  }
+
+  private String urlEncodeKey(String key) {
+    String[] segments = key.split("/", -1);
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < segments.length; i++) {
+      if (i > 0) {
+        sb.append('/');
+      }
+      sb.append(URLEncoder.encode(segments[i], StandardCharsets.UTF_8).replace("+", "%20"));
+    }
+    return sb.toString();
   }
 
   @Override
