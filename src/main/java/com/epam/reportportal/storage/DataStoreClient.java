@@ -74,34 +74,32 @@ public class DataStoreClient implements DataStore {
       return;
     }
     if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-      List<String> keys = new ArrayList<>(paths);
-      if (legacyEncodedKeyFallback) {
-        for (String path : paths) {
-          String legacyKey = urlEncodeKey(path);
-          if (!legacyKey.equals(path)) {
-            keys.add(legacyKey);
-          }
-        }
-      }
-      removeFiles(defaultBucketName, keys);
+      removeFiles(defaultBucketName, withLegacyKeys(paths));
     } else {
-      Map<String, List<String>> bucketPathMap = BucketPathResolver.groupByBucket(paths);
-      if (legacyEncodedKeyFallback) {
-        for (List<String> bucketPaths : bucketPathMap.values()) {
-          List<String> legacyKeys = new ArrayList<>();
-          for (String cutPath : bucketPaths) {
-            String legacyKey = urlEncodeKey(cutPath);
-            if (!legacyKey.equals(cutPath)) {
-              legacyKeys.add(legacyKey);
-            }
-          }
-          bucketPaths.addAll(legacyKeys);
-        }
-      }
-      for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
-        removeFiles(bucketPrefix + bucketPaths.getKey() + bucketPostfix, bucketPaths.getValue());
+      deleteFromProjectBuckets(paths);
+    }
+  }
+
+  private void deleteFromProjectBuckets(List<String> paths) {
+    Map<String, List<String>> bucketPathMap = BucketPathResolver.groupByBucket(paths);
+    for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
+      removeFiles(bucketPrefix + bucketPaths.getKey() + bucketPostfix,
+          withLegacyKeys(bucketPaths.getValue()));
+    }
+  }
+
+  private List<String> withLegacyKeys(List<String> keys) {
+    if (!legacyEncodedKeyFallback) {
+      return keys;
+    }
+    List<String> keysWithLegacyFallback = new ArrayList<>(keys);
+    for (String key : keys) {
+      String legacyKey = urlEncodeKey(key);
+      if (!legacyKey.equals(key)) {
+        keysWithLegacyFallback.add(legacyKey);
       }
     }
+    return keysWithLegacyFallback;
   }
 
   private String urlEncodeKey(String key) {

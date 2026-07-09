@@ -25,13 +25,13 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.opendal.Operator;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 
 /**
  * Blob storage configuration.
@@ -83,22 +83,17 @@ public class DataStoreConfiguration {
       @Value("${datastore.secretKey}") String secretKey,
       @Value("${datastore.endpoint}") String endpoint,
       @Value("${datastore.region:us-east-1}") String region) {
-    Map<String, String> config = new HashMap<>();
-    config.put(ACCESS_KEY_ID, accessKey);
-    config.put(SECRET_ACCESS_KEY, secretKey);
-    config.put(ENDPOINT, endpoint);
-    config.put(REGION, region);
-    return new S3OperatorFactory(config);
+    return staticCredentialsOperatorFactory(accessKey, secretKey, endpoint, region);
   }
 
   /**
    * Creates DataStore bean to work with MinIO.
    *
-   * @param operatorFactory    {@link S3OperatorFactory} object
-   * @param bucketPrefix       Prefix for bucket name
-   * @param bucketPostfix      Postfix for bucket name
-   * @param defaultBucketName  Name of default bucket to use
-   * @param featureFlagHandler Instance of {@link FeatureFlagHandler} to check enabled features
+   * @param minioOperatorFactory {@link S3OperatorFactory} object
+   * @param bucketPrefix         Prefix for bucket name
+   * @param bucketPostfix        Postfix for bucket name
+   * @param defaultBucketName    Name of default bucket to use
+   * @param featureFlagHandler   Instance of {@link FeatureFlagHandler} to check enabled features
    * @return {@link DataStore} object
    */
   @Bean
@@ -117,8 +112,8 @@ public class DataStoreConfiguration {
    * Creates the {@link S3OperatorFactory} bean to work with SeaweedFS.
    *
    * <p>Uses the generic {@code s3} OpenDAL service with a custom {@code endpoint}. Unlike jclouds, OpenDAL's S3
-   * service always signs requests with AWS Signature Version 4 and defaults to path-style bucket addressing, which
-   * is exactly what SeaweedFS's S3 gateway expects, so no extra signing/virtual-host overrides are required here.
+   * service always signs requests with AWS Signature Version 4 and defaults to path-style bucket addressing, which is
+   * exactly what SeaweedFS's S3 gateway expects, so no extra signing/virtual-host overrides are required here.
    *
    * @param accessKey access key
    * @param secretKey secret key
@@ -133,22 +128,17 @@ public class DataStoreConfiguration {
       @Value("${datastore.secretKey}") String secretKey,
       @Value("${datastore.endpoint}") String endpoint,
       @Value("${datastore.region:eu-central-1}") String region) {
-    Map<String, String> config = new HashMap<>();
-    config.put(ACCESS_KEY_ID, accessKey);
-    config.put(SECRET_ACCESS_KEY, secretKey);
-    config.put(ENDPOINT, endpoint);
-    config.put(REGION, region);
-    return new S3OperatorFactory(config);
+    return staticCredentialsOperatorFactory(accessKey, secretKey, endpoint, region);
   }
 
   /**
    * Creates DataStore bean to work with SeaweedFS.
    *
-   * @param operatorFactory    {@link S3OperatorFactory} object
-   * @param bucketPrefix       prefix for bucket name
-   * @param bucketPostfix      postfix for bucket name
-   * @param defaultBucketName  name of default bucket to use
-   * @param featureFlagHandler instance of {@link FeatureFlagHandler} to check enabled features
+   * @param seaweedFsOperatorFactory {@link S3OperatorFactory} object
+   * @param bucketPrefix             prefix for bucket name
+   * @param bucketPostfix            postfix for bucket name
+   * @param defaultBucketName        name of default bucket to use
+   * @param featureFlagHandler       instance of {@link FeatureFlagHandler} to check enabled features
    * @return {@link DataStore} object
    */
   @Bean
@@ -184,7 +174,7 @@ public class DataStoreConfiguration {
       return new S3OperatorFactory(config);
     }
 
-    return new S3OperatorFactory(config, DefaultCredentialsProvider.create());
+    return new S3OperatorFactory(config, DefaultCredentialsProvider.builder().build());
   }
 
   @Bean
@@ -198,5 +188,15 @@ public class DataStoreConfiguration {
     return new DataStoreClient(awsS3OperatorFactory, bucketPrefix, bucketPostfix, defaultBucketName,
         featureFlagHandler
     );
+  }
+
+  private S3OperatorFactory staticCredentialsOperatorFactory(String accessKey, String secretKey,
+      String endpoint, String region) {
+    Map<String, String> config = new HashMap<>();
+    config.put(ACCESS_KEY_ID, accessKey);
+    config.put(SECRET_ACCESS_KEY, secretKey);
+    config.put(ENDPOINT, endpoint);
+    config.put(REGION, region);
+    return new S3OperatorFactory(config);
   }
 }

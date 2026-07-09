@@ -31,8 +31,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
 
 /**
- * Local storage service, backed by OpenDAL's {@code fs} service rooted at {@code baseDirectory}. A "bucket" is just
- * a subdirectory under that root, addressed via the relative path passed to the operator.
+ * Local storage service, backed by OpenDAL's {@code fs} service rooted at {@code baseDirectory}. A "bucket" is just a
+ * subdirectory under that root, addressed via the relative path passed to the operator.
  */
 public class LocalDataStore implements DataStore {
 
@@ -65,7 +65,7 @@ public class LocalDataStore implements DataStore {
   }
 
   @Override
-  public void deleteAll(List<String> paths) throws Exception {
+  public void deleteAll(List<String> paths) {
     if (CollectionUtils.isEmpty(paths)) {
       return;
     }
