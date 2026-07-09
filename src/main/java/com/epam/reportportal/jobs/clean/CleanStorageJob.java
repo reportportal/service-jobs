@@ -2,7 +2,7 @@ package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.jobs.BaseJob;
 import com.epam.reportportal.model.BlobNotFoundException;
-import com.epam.reportportal.storage.DataStorageService;
+import com.epam.reportportal.storage.DataStore;
 import com.epam.reportportal.utils.DataStorageUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +30,7 @@ public class CleanStorageJob extends BaseJob {
           (SELECT id FROM attachment_deletion ORDER BY id LIMIT ?) RETURNING *""";
 
   private static final int MAX_BATCH_SIZE = 200000;
-  private final DataStorageService storageService;
+  private final DataStore storageService;
   private final int chunkSize;
 
   private final int batchSize;
@@ -39,10 +39,10 @@ public class CleanStorageJob extends BaseJob {
    * Initializes {@link CleanStorageJob}.
    *
    * @param jdbcTemplate   {@link JdbcTemplate}
-   * @param storageService {@link DataStorageService}
+   * @param storageService {@link DataStore}
    * @param chunkSize      Size of elements deleted at once
    */
-  public CleanStorageJob(JdbcTemplate jdbcTemplate, DataStorageService storageService,
+  public CleanStorageJob(JdbcTemplate jdbcTemplate, DataStore storageService,
       @Value("${rp.environment.variable.clean.storage.chunkSize}") int chunkSize) {
     super(jdbcTemplate);
     this.chunkSize = chunkSize;

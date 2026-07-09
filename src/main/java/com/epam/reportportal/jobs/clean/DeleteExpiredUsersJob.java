@@ -21,7 +21,7 @@ import com.epam.reportportal.jobs.BaseJob;
 import com.epam.reportportal.model.EmailNotificationRequest;
 import com.epam.reportportal.model.event.domain.UsersDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
-import com.epam.reportportal.storage.DataStorageService;
+import com.epam.reportportal.storage.DataStore;
 import com.epam.reportportal.utils.DataStorageUtils;
 import com.epam.reportportal.utils.ValidationUtil;
 import java.time.LocalDateTime;
@@ -127,7 +127,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
   private Long retentionPeriod;
-  private final DataStorageService dataStorageService;
+  private final DataStore dataStore;
 
   private final IndexerServiceClient indexerServiceClient;
 
@@ -136,11 +136,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
   @Autowired
   public DeleteExpiredUsersJob(JdbcTemplate jdbcTemplate,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-      DataStorageService dataStorageService, IndexerServiceClient indexerServiceClient,
+      DataStore dataStore, IndexerServiceClient indexerServiceClient,
       MessageBus messageBus) {
     super(jdbcTemplate);
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
-    this.dataStorageService = dataStorageService;
+    this.dataStore = dataStore;
     this.indexerServiceClient = indexerServiceClient;
     this.messageBus = messageBus;
   }
@@ -176,7 +176,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
           .map(DataStorageUtils::decode)
           .toList();
       try {
-        dataStorageService.deleteAll(userAttachments);
+        dataStore.deleteAll(userAttachments);
       } catch (Exception e) {
         LOGGER.error("Failed to delete users photo from data storage: {}", userAttachments, e);
       }

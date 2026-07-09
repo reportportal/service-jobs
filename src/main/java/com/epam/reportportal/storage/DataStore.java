@@ -16,13 +16,14 @@
 
 package com.epam.reportportal.storage;
 
+import com.epam.reportportal.model.BlobNotFoundException;
 import java.util.List;
 
 /**
  * Storage service interface
  */
-public interface DataStorageService {
-  void deleteAll(List<String> paths) throws Exception;
+public interface DataStore {
+  void deleteAll(List<String> paths) throws BlobNotFoundException;
 
-  void deleteContainer(String containerName) throws Exception;
+  void deleteContainer(String containerName);
 }
