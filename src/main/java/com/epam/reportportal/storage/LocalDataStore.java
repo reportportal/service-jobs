@@ -27,19 +27,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.jclouds.blobstore.BlobStore;
+import org.apache.opendal.Operator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
 
 /**
- * Local storage service
+ * Local storage service, backed by OpenDAL's {@code fs} service rooted at {@code baseDirectory}. A "bucket" is just
+ * a subdirectory under that root, addressed via the relative path passed to the operator.
  */
-public class LocalDataStorageService implements DataStorageService {
+public class LocalDataStore implements DataStore {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LocalDataStorageService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalDataStore.class);
 
-  private final BlobStore blobStore;
+  private final Operator operator;
 
   private final FeatureFlagHandler featureFlagHandler;
 
@@ -55,9 +56,9 @@ public class LocalDataStorageService implements DataStorageService {
 
   private static final String SINGLE_BUCKET_NAME = "store";
 
-  public LocalDataStorageService(BlobStore blobStore, FeatureFlagHandler featureFlagHandler,
+  public LocalDataStore(Operator operator, FeatureFlagHandler featureFlagHandler,
       String baseDirectory, String bucketPrefix, String bucketPostfix, String defaultBucketName) {
-    this.blobStore = blobStore;
+    this.operator = operator;
     this.featureFlagHandler = featureFlagHandler;
     this.baseDirectory = baseDirectory;
     this.bucketPrefix = bucketPrefix;
@@ -91,7 +92,7 @@ public class LocalDataStorageService implements DataStorageService {
   @Override
   public void deleteContainer(String containerName) {
     try {
-      blobStore.deleteContainer(containerName);
+      operator.removeAll(containerName + "/");
     } catch (Exception e) {
       LOGGER.warn("Exception {} is occurred during deleting container", e.getMessage());
     }
@@ -121,10 +122,12 @@ public class LocalDataStorageService implements DataStorageService {
   }
 
   private void removeFiles(String bucketName, List<String> paths) {
-    try {
-      blobStore.removeBlobs(bucketName, paths);
-    } catch (Exception e) {
-      LOGGER.warn("Exception {} is occurred during deleting file", e.getMessage());
+    for (String path : paths) {
+      try {
+        operator.delete(bucketName + "/" + path);
+      } catch (Exception e) {
+        LOGGER.warn("Exception {} is occurred during deleting file", e.getMessage());
+      }
     }
   }
 

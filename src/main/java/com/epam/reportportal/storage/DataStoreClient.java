@@ -26,19 +26,19 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.jclouds.blobstore.BlobStore;
+import org.apache.opendal.Operator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
 
 /**
- * S3 storage service.
+ * S3(-compatible) storage service, backed by OpenDAL.
  */
-public class S3DataStorageService implements DataStorageService {
+public class DataStoreClient implements DataStore {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(S3DataStorageService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataStoreClient.class);
 
-  private final BlobStore blobStore;
+  private final S3OperatorFactory operatorFactory;
   private final String bucketPrefix;
   private final String bucketPostfix;
   private final String defaultBucketName;
@@ -46,26 +46,24 @@ public class S3DataStorageService implements DataStorageService {
 
   private final FeatureFlagHandler featureFlagHandler;
 
-  private static final String PROJECT_PREFIX = "/project-data/";
-
   /**
-   * Creates instance of {@link S3DataStorageService}.
+   * Creates instance of {@link DataStoreClient}.
    *
-   * @param blobStore          {@link BlobStore}
+   * @param operatorFactory    {@link S3OperatorFactory} providing a per-bucket {@link Operator}
    * @param bucketPrefix       Prefix for bucket name
    * @param bucketPostfix      Postfix for bucket name
    * @param defaultBucketName  Name for the default bucket(plugins, etc.)
    * @param featureFlagHandler {@link FeatureFlagHandler}
    */
-  public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String bucketPostfix,
+  public DataStoreClient(S3OperatorFactory operatorFactory, String bucketPrefix, String bucketPostfix,
       String defaultBucketName, FeatureFlagHandler featureFlagHandler) {
-    this(blobStore, bucketPrefix, bucketPostfix, defaultBucketName, featureFlagHandler, false);
+    this(operatorFactory, bucketPrefix, bucketPostfix, defaultBucketName, featureFlagHandler, false);
   }
 
-  public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String bucketPostfix,
+  public DataStoreClient(S3OperatorFactory operatorFactory, String bucketPrefix, String bucketPostfix,
       String defaultBucketName, FeatureFlagHandler featureFlagHandler,
       boolean legacyEncodedKeyFallback) {
-    this.blobStore = blobStore;
+    this.operatorFactory = operatorFactory;
     this.bucketPrefix = bucketPrefix;
     this.bucketPostfix = bucketPostfix;
     this.defaultBucketName = defaultBucketName;
@@ -74,7 +72,7 @@ public class S3DataStorageService implements DataStorageService {
   }
 
   @Override
-  public void deleteAll(List<String> paths) throws Exception {
+  public void deleteAll(List<String> paths) {
     if (CollectionUtils.isEmpty(paths)) {
       return;
     }
@@ -131,7 +129,7 @@ public class S3DataStorageService implements DataStorageService {
   @Override
   public void deleteContainer(String containerName) {
     try {
-      blobStore.deleteContainer(bucketPrefix + containerName + bucketPostfix);
+      operatorFactory.forBucket(bucketPrefix + containerName + bucketPostfix).removeAll("/");
     } catch (Exception e) {
       LOGGER.warn("Exception {} is occurred during deleting container", e.getMessage());
     }
@@ -142,10 +140,13 @@ public class S3DataStorageService implements DataStorageService {
   }
 
   private void removeFiles(String bucketName, List<String> paths) {
-    try {
-      blobStore.removeBlobs(bucketName, paths);
-    } catch (Exception e) {
-      LOGGER.warn("Exception {} is occurred during deleting file", e.getMessage());
+    Operator operator = operatorFactory.forBucket(bucketName);
+    for (String path : paths) {
+      try {
+        operator.delete(path);
+      } catch (Exception e) {
+        LOGGER.warn("Exception {} is occurred during deleting file", e.getMessage());
+      }
     }
   }
 

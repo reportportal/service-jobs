@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * Storage service interface
  */
-public interface DataStorageService {
+public interface DataStore {
   void deleteAll(List<String> paths) throws Exception;
 
   void deleteContainer(String containerName) throws Exception;

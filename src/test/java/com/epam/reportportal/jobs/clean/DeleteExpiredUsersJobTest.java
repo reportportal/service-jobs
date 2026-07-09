@@ -20,7 +20,7 @@ import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import com.epam.reportportal.model.EmailNotificationRequest;
 import com.epam.reportportal.model.event.domain.UsersDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
-import com.epam.reportportal.storage.DataStorageService;
+import com.epam.reportportal.storage.DataStore;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +46,7 @@ class DeleteExpiredUsersJobTest {
   private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
   @Mock
-  private DataStorageService dataStorageService;
+  private DataStore dataStore;
 
   @Mock
   private IndexerServiceClient indexerServiceClient;
@@ -103,7 +103,7 @@ class DeleteExpiredUsersJobTest {
     verify(namedParameterJdbcTemplate, times(1))
         .queryForList(anyString(), any(MapSqlParameterSource.class), eq(String.class));
 
-    verify(dataStorageService, times(1)).deleteAll(anyList());
+    verify(dataStore, times(1)).deleteAll(anyList());
     verify(indexerServiceClient, times(2)).removeSuggest(anyLong());
     verify(indexerServiceClient, times(2)).deleteIndex(anyLong());
     verify(messageBus, times(1)).publishDomainEvent(usersDeletedEventCaptor.capture());
@@ -137,7 +137,7 @@ class DeleteExpiredUsersJobTest {
     verify(namedParameterJdbcTemplate, times(1))
         .query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class));
 
-    verify(dataStorageService, never()).deleteAll(anyList());
+    verify(dataStore, never()).deleteAll(anyList());
     verify(indexerServiceClient, never()).removeSuggest(anyLong());
     verify(indexerServiceClient, never()).deleteIndex(anyLong());
     verify(namedParameterJdbcTemplate, never()).update(anyString(),
@@ -158,7 +158,7 @@ class DeleteExpiredUsersJobTest {
     assertNotNull(deleteExpiredUsersJob);
     verify(namedParameterJdbcTemplate, never())
         .query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class));
-    verify(dataStorageService, never()).deleteAll(anyList());
+    verify(dataStore, never()).deleteAll(anyList());
     verify(indexerServiceClient, never()).removeSuggest(anyLong());
     verify(indexerServiceClient, never()).deleteIndex(anyLong());
     verify(namedParameterJdbcTemplate, never()).update(anyString(),
@@ -169,7 +169,7 @@ class DeleteExpiredUsersJobTest {
   }
 
   @Test
-  void executeWhenDataStorageServiceThrowsExceptionShouldContinueExecution() throws Exception {
+  void executeWhenDataStoreThrowsExceptionShouldContinueExecution() throws Exception {
     // Given
     DeleteExpiredUsersJob.User user = createUser(1L, "user@test.com");
     List<DeleteExpiredUsersJob.User> expiredUsers = List.of(user);
@@ -188,7 +188,7 @@ class DeleteExpiredUsersJobTest {
     when(namedParameterJdbcTemplate.queryForObject(anyString(), isA(MapSqlParameterSource.class),
         eq(Boolean.class)))
         .thenReturn(true);
-    doThrow(new RuntimeException("Storage error")).when(dataStorageService).deleteAll(anyList());
+    doThrow(new RuntimeException("Storage error")).when(dataStore).deleteAll(anyList());
 
     // When
     deleteExpiredUsersJob.execute();
@@ -198,7 +198,7 @@ class DeleteExpiredUsersJobTest {
     assertEquals(1, expiredUsers.size());
     assertEquals(1, personalProjectIds.size());
 
-    verify(dataStorageService, times(1)).deleteAll(anyList());
+    verify(dataStore, times(1)).deleteAll(anyList());
     verify(indexerServiceClient, times(1)).removeSuggest(anyLong());
     verify(indexerServiceClient, times(1)).deleteIndex(anyLong());
     verify(namedParameterJdbcTemplate, atLeast(1)).update(anyString(),
@@ -232,7 +232,7 @@ class DeleteExpiredUsersJobTest {
     assertNotNull(deleteExpiredUsersJob);
     assertEquals(1, expiredUsers.size());
 
-    verify(dataStorageService, times(1)).deleteAll(anyList());
+    verify(dataStore, times(1)).deleteAll(anyList());
     verify(indexerServiceClient, never()).removeSuggest(anyLong());
     verify(indexerServiceClient, never()).deleteIndex(anyLong());
     verify(namedParameterJdbcTemplate, atLeast(1)).update(anyString(),
@@ -279,7 +279,7 @@ class DeleteExpiredUsersJobTest {
     assertEquals(1, expiredUsers.size());
     assertEquals(2, personalProjectIds.size());
 
-    verify(dataStorageService, times(1)).deleteAll(anyList());
+    verify(dataStore, times(1)).deleteAll(anyList());
     verify(indexerServiceClient, never()).removeSuggest(anyLong());
     verify(indexerServiceClient, never()).deleteIndex(anyLong());
     verify(namedParameterJdbcTemplate, atLeast(1)).update(anyString(),
