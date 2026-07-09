@@ -23,8 +23,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.opendal.Operator;
@@ -72,7 +70,7 @@ public class LocalDataStore implements DataStore {
       return;
     }
     if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-      Map<String, List<String>> bucketPathMap = retrieveBucketPathMap(paths);
+      Map<String, List<String>> bucketPathMap = BucketPathResolver.groupByBucket(paths);
       for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
         removeFiles(
             defaultBucketName,
@@ -81,7 +79,7 @@ public class LocalDataStore implements DataStore {
         deleteEmptyDirs(Paths.get(baseDirectory, SINGLE_BUCKET_NAME, PROJECT_PREFIX));
       }
     } else {
-      Map<String, List<String>> bucketPathMap = retrieveBucketPathMap(paths);
+      Map<String, List<String>> bucketPathMap = BucketPathResolver.groupByBucket(paths);
       for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
         removeFiles(bucketPrefix + bucketPaths.getKey() + bucketPostfix, bucketPaths.getValue());
         deleteEmptyDirs(Paths.get(baseDirectory, bucketPaths.getKey()));
@@ -96,29 +94,6 @@ public class LocalDataStore implements DataStore {
     } catch (Exception e) {
       LOGGER.warn("Exception {} is occurred during deleting container", e.getMessage());
     }
-  }
-
-  private Map<String, List<String>> retrieveBucketPathMap(List<String> paths) {
-    Map<String, List<String>> bucketPathMap = new HashMap<>();
-    for (String path : paths) {
-      Path targetPath = Paths.get(path);
-      int nameCount = targetPath.getNameCount();
-      String bucket = retrievePath(targetPath, 0, 1);
-      String cutPath = retrievePath(targetPath, 1, nameCount);
-      if (bucketPathMap.containsKey(bucket)) {
-        bucketPathMap.get(bucket).add(cutPath);
-      } else {
-        List<String> bucketPaths = new ArrayList<>();
-        bucketPaths.add(cutPath);
-        bucketPathMap.put(bucket, bucketPaths);
-      }
-    }
-
-    return bucketPathMap;
-  }
-
-  private String retrievePath(Path path, int beginIndex, int endIndex) {
-    return String.valueOf(path.subpath(beginIndex, endIndex));
   }
 
   private void removeFiles(String bucketName, List<String> paths) {

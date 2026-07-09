@@ -20,10 +20,7 @@ import com.epam.reportportal.utils.FeatureFlag;
 import com.epam.reportportal.utils.FeatureFlagHandler;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.opendal.Operator;
@@ -88,24 +85,17 @@ public class DataStoreClient implements DataStore {
       }
       removeFiles(defaultBucketName, keys);
     } else {
-      Map<String, List<String>> bucketPathMap = new HashMap<>();
-      for (String path : paths) {
-        Path targetPath = Paths.get(path);
-        int nameCount = targetPath.getNameCount();
-        String bucket = retrievePath(targetPath, 0, 1);
-        String cutPath = retrievePath(targetPath, 1, nameCount);
-        if (bucketPathMap.containsKey(bucket)) {
-          bucketPathMap.get(bucket).add(cutPath);
-        } else {
-          List<String> bucketPaths = new ArrayList<>();
-          bucketPaths.add(cutPath);
-          bucketPathMap.put(bucket, bucketPaths);
-        }
-        if (legacyEncodedKeyFallback) {
-          String legacyKey = urlEncodeKey(cutPath);
-          if (!legacyKey.equals(cutPath)) {
-            bucketPathMap.get(bucket).add(legacyKey);
+      Map<String, List<String>> bucketPathMap = BucketPathResolver.groupByBucket(paths);
+      if (legacyEncodedKeyFallback) {
+        for (List<String> bucketPaths : bucketPathMap.values()) {
+          List<String> legacyKeys = new ArrayList<>();
+          for (String cutPath : bucketPaths) {
+            String legacyKey = urlEncodeKey(cutPath);
+            if (!legacyKey.equals(cutPath)) {
+              legacyKeys.add(legacyKey);
+            }
           }
+          bucketPaths.addAll(legacyKeys);
         }
       }
       for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
@@ -133,10 +123,6 @@ public class DataStoreClient implements DataStore {
     } catch (Exception e) {
       LOGGER.warn("Exception {} is occurred during deleting container", e.getMessage());
     }
-  }
-
-  private String retrievePath(Path path, int beginIndex, int endIndex) {
-    return String.valueOf(path.subpath(beginIndex, endIndex));
   }
 
   private void removeFiles(String bucketName, List<String> paths) {
