@@ -49,28 +49,28 @@ processResources {
 
 ext['log4j2.version'] = '2.21.1'
 ext['log4j-to-slf4j.version'] = '2.21.1'
-ext['postgresql.version'] = '42.7.11'
+ext['postgresql.version'] = '42.7.12'
 ext['snakeyaml.version'] = '2.2'
 ext['spring-boot.version'] = '3.5.14'
 
 dependencies {
 
-    implementation 'io.netty:netty-codec:4.1.135.Final'
-    implementation 'io.netty:netty-codec-http:4.1.135.Final'
-    implementation 'io.netty:netty-codec-http2:4.1.135.Final'
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
-    implementation 'ch.qos.logback:logback-classic:1.5.32'
-    implementation 'ch.qos.logback:logback-core:1.5.32'
+    implementation 'io.netty:netty-codec:4.1.137.Final'
+    implementation 'io.netty:netty-codec-http:4.1.137.Final'
+    implementation 'io.netty:netty-codec-http2:4.1.137.Final'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.4'
+    implementation 'ch.qos.logback:logback-classic:1.5.36'
+    implementation 'ch.qos.logback:logback-core:1.5.36'
 
     implementation 'org.json:json:20250517'
-    implementation 'net.javacrumbs.shedlock:shedlock-spring:6.9.2'
+    implementation 'net.javacrumbs.shedlock:shedlock-spring:7.8.0'
     implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:6.9.2'
 
     implementation 'org.apache.commons:commons-lang3:3.20.0'
 
-    implementation 'org.apache.tomcat.embed:tomcat-embed-core:11.0.22'
-    implementation 'org.apache.tomcat.embed:tomcat-embed-el:11.0.22'
-    implementation 'org.apache.tomcat.embed:tomcat-embed-websocket:11.0.22'
+    implementation 'org.apache.tomcat.embed:tomcat-embed-core:11.0.25'
+    implementation 'org.apache.tomcat.embed:tomcat-embed-el:11.0.25'
+    implementation 'org.apache.tomcat.embed:tomcat-embed-websocket:11.0.25'
 
     implementation 'org.springframework:spring-webmvc'
     implementation 'org.springframework:spring-web'
@@ -95,8 +95,8 @@ dependencies {
     }
     implementation 'com.google.guava:guava:33.3.0-jre'
 
-    implementation "com.rabbitmq:http-client:5.4.0"
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.4'
+    implementation "com.rabbitmq:http-client:5.7.0"
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.6'
 
     implementation 'software.amazon.awssdk:aws-core:2.38.9'
     implementation 'software.amazon.awssdk:sts:2.38.9'
