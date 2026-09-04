@@ -19,20 +19,28 @@ package com.epam.reportportal.jobs.statistics;
 import static org.springframework.http.HttpMethod.POST;
 
 import com.epam.reportportal.jobs.BaseJob;
+import com.epam.reportportal.model.ga4.AnalyticsDataRecord;
+import com.epam.reportportal.model.ga4.AnalyticsMetadata;
+import com.epam.reportportal.model.ga4.Ga4Event;
+import com.epam.reportportal.model.ga4.Ga4EventParams;
+import com.epam.reportportal.model.ga4.Ga4Request;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.apache.commons.lang3.StringUtils;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -61,6 +69,8 @@ public class DefectUpdateStatisticsJob extends BaseJob {
 
   private final RestTemplate restTemplate;
 
+  private final ObjectMapper objectMapper;
+
   private final String mId;
   private final String gaId;
 
@@ -74,11 +84,13 @@ public class DefectUpdateStatisticsJob extends BaseJob {
   public DefectUpdateStatisticsJob(JdbcTemplate jdbcTemplate,
       @Value("${rp.environment.variable.ga.mId}") String mId,
       @Value("${rp.environment.variable.ga.id}") String gaId,
-      NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
+      NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+      ObjectMapper objectMapper) {
     super(jdbcTemplate);
     this.mId = mId;
     this.gaId = gaId;
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+    this.objectMapper = objectMapper;
     this.restTemplate = new RestTemplate();
   }
 
@@ -105,97 +117,128 @@ public class DefectUpdateStatisticsJob extends BaseJob {
     MapSqlParameterSource queryParams = new MapSqlParameterSource();
     queryParams.addValue(DATE_BEFORE, dateBefore);
 
-    namedParameterJdbcTemplate.query(SELECT_STATISTICS_QUERY, queryParams, rs -> {
-      int autoAnalyzed = 0;
-      int userAnalyzed = 0;
-      int sentToAnalyze = 0;
-      int skipped = 0;
-      String version;
-      boolean analyzerEnabled;
-      Set<String> status = new HashSet<>();
-      Set<String> autoAnalysisState = new HashSet<>();
+    List<AnalyticsMetadata> statistics = namedParameterJdbcTemplate.query(SELECT_STATISTICS_QUERY,
+        queryParams, (rs, rowNum) -> readMetadata(rs.getString("metadata")));
 
-      do {
-        var metadata = new JSONObject(rs.getString("metadata"))
-            .getJSONObject("metadata");
-
-        analyzerEnabled = metadata.optBoolean("analyzerEnabled");
-        if (analyzerEnabled) {
-          autoAnalysisState.add(metadata.getBoolean("autoAnalysisOn") ? "on" : "off");
-        }
-
-        if (metadata.optInt("userAnalyzed") > 0) {
-          status.add("manually");
-          sentToAnalyze += metadata.optInt("userAnalyzed");
-        } else {
-          status.add("automatically");
-          sentToAnalyze += metadata.optInt("sentToAnalyze");
-        }
-        skipped += metadata.optInt("skipped");
-
-        userAnalyzed += metadata.optInt("userAnalyzed");
-        autoAnalyzed += metadata.optInt("analyzed");
-        version = metadata.getString("version");
-
-      } while (rs.next());
-
+    if (!statistics.isEmpty()) {
       var instanceId = jdbcTemplate.queryForObject(SELECT_INSTANCE_ID_QUERY, String.class);
-      var params = new JSONObject();
-      params.put("category", "analyzer");
-      params.put("instanceID", instanceId);
-      params.put("timestamp", now.toEpochMilli());
-      params.put("version", version);
-      params.put("type", analyzerEnabled ? "is_analyzer" : "not_analyzer");
-      if (analyzerEnabled) {
-        params.put("number", autoAnalyzed
-            + "#" + userAnalyzed
-            + "#" + sentToAnalyze
-            + "#" + skipped);
-        params.put("auto_analysis", String.join("#", autoAnalysisState));
-        params.put("status", String.join("#", status));
+      try {
+        statistics.stream()
+            .collect(Collectors.groupingBy(AnalyticsMetadata::getOrganizationId))
+            .forEach((organizationId, orgStatistics) ->
+                sendRequest(buildRequestBody(now, instanceId, organizationId, orgStatistics)));
+      } finally {
+        jdbcTemplate.execute(DELETE_STATISTICS_QUERY);
       }
-
-      var event = new JSONObject();
-      event.put("name", "analyze_analyzer");
-      event.put("params", params);
-
-      JSONArray events = new JSONArray();
-      events.put(event);
-
-      JSONObject requestBody = new JSONObject();
-      requestBody.put("client_id",
-          now.toEpochMilli() + "." + new SecureRandom().nextInt(100_000, 999_999));
-      requestBody.put("events", events);
-
-      sendRequest(requestBody);
-
-    });
+    }
 
     LOGGER.info("Completed items defect update statistics job");
 
   }
 
-  private void sendRequest(JSONObject requestBody) {
+  private AnalyticsMetadata readMetadata(String metadata) {
     try {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Sending statistics data: {}", requestBody);
+      return objectMapper.readValue(metadata, AnalyticsDataRecord.class).getMetadata();
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("Unable to parse analytics data metadata", e);
+    }
+  }
+
+  private Ga4Request buildRequestBody(Instant now, String instanceId, Long organizationId,
+      List<AnalyticsMetadata> statistics) {
+    var summary = DefectAnalysisSummary.of(statistics);
+
+    var params = Ga4EventParams.builder()
+        .organizationId(organizationId == null ? null : organizationId + "|" + instanceId)
+        .category("analyzer")
+        .instanceId(instanceId)
+        .timestamp(now.toEpochMilli())
+        .version(summary.version)
+        .type(summary.analyzerEnabled ? "is_analyzer" : "not_analyzer")
+        .number(summary.analyzerEnabled ? summary.formatCounts() : null)
+        .autoAnalysis(summary.analyzerEnabled ? String.join("#", summary.autoAnalysisState) : null)
+        .status(summary.analyzerEnabled ? String.join("#", summary.status) : null)
+        .build();
+
+    var event = Ga4Event.builder()
+        .name("analyze_analyzer")
+        .params(params)
+        .build();
+
+    return Ga4Request.builder()
+        .clientId(now.toEpochMilli() + "." + new SecureRandom().nextInt(100_000, 999_999))
+        .events(List.of(event))
+        .build();
+  }
+
+  /**
+   * Accumulates per-organization defect analysis counters across all {@link AnalyticsMetadata}
+   * rows collected for that organization.
+   */
+  private static final class DefectAnalysisSummary {
+
+    private int analyzed;
+    private int userAnalyzed;
+    private int sentToAnalyze;
+    private int skipped;
+    private String version;
+    private boolean analyzerEnabled;
+    private final Set<String> status = new HashSet<>();
+    private final Set<String> autoAnalysisState = new HashSet<>();
+
+    static DefectAnalysisSummary of(List<AnalyticsMetadata> statistics) {
+      var summary = new DefectAnalysisSummary();
+      statistics.forEach(summary::accumulate);
+      return summary;
+    }
+
+    private void accumulate(AnalyticsMetadata metadata) {
+      analyzerEnabled = metadata.isAnalyzerEnabled();
+      if (analyzerEnabled) {
+        autoAnalysisState.add(metadata.isAutoAnalysisOn() ? "on" : "off");
       }
 
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-      HttpEntity<String> request = new HttpEntity<>(requestBody.toString(), headers);
+      if (metadata.getUserAnalyzed() > 0) {
+        status.add("manually");
+        sentToAnalyze += metadata.getUserAnalyzed();
+      } else {
+        status.add("automatically");
+        sentToAnalyze += metadata.getSentToAnalyze();
+      }
+      skipped += metadata.getSkipped();
 
-      String url = String.format(GA_URL, mId, gaId);
+      userAnalyzed += metadata.getUserAnalyzed();
+      analyzed += metadata.getAnalyzed();
+      version = metadata.getVersion();
+    }
 
-      var response = restTemplate.exchange(url, POST, request, String.class);
-      if (response.getStatusCodeValue() != 204) {
+    private String formatCounts() {
+      return analyzed + "#" + userAnalyzed + "#" + sentToAnalyze + "#" + skipped;
+    }
+  }
+
+  private void sendRequest(Ga4Request requestBody) {
+    try {
+      String body = objectMapper.writeValueAsString(requestBody);
+      LOGGER.debug("Sending statistics data: {}", body);
+
+      var response = restTemplate.exchange(gaCollectUrl(), POST, asJsonEntity(body), String.class);
+      if (!response.getStatusCode().equals(HttpStatus.NO_CONTENT)) {
         LOGGER.error("Failed to send statistics: {}", response);
       }
     } catch (Exception e) {
       LOGGER.error("Failed to send statistics", e);
-    } finally {
-      jdbcTemplate.execute(DELETE_STATISTICS_QUERY);
     }
+  }
+
+  private String gaCollectUrl() {
+    return String.format(GA_URL, mId, gaId);
+  }
+
+  private HttpEntity<String> asJsonEntity(String body) {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    return new HttpEntity<>(body, headers);
   }
 
 }
