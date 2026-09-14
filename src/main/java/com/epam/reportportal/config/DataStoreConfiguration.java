@@ -31,7 +31,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 
 /**
  * Blob storage configuration.
@@ -155,6 +154,10 @@ public class DataStoreConfiguration {
   /**
    * Creates the {@link S3OperatorFactory} bean, that works with AWS S3.
    *
+   * <p>When {@code accessKey}/{@code secretKey} are not provided, OpenDAL's S3 service resolves and refreshes
+   * credentials itself via its own default credential chain (environment variables, shared profile, EC2/ECS/EKS
+   * instance metadata), so no explicit IAM credential provider is required here.
+   *
    * @param accessKey accessKey to use (optional, if not provided uses IAM credentials)
    * @param secretKey secretKey to use (optional, if not provided uses IAM credentials)
    * @param region    AWS S3 region to use.
@@ -171,10 +174,9 @@ public class DataStoreConfiguration {
     if (StringUtils.isNotEmpty(accessKey) && StringUtils.isNotEmpty(secretKey)) {
       config.put(ACCESS_KEY_ID, accessKey);
       config.put(SECRET_ACCESS_KEY, secretKey);
-      return new S3OperatorFactory(config);
     }
 
-    return new S3OperatorFactory(config, DefaultCredentialsProvider.builder().build());
+    return new S3OperatorFactory(config);
   }
 
   @Bean

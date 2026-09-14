@@ -16,77 +16,45 @@
 
 package com.epam.reportportal.storage;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.opendal.Operator;
-import software.amazon.awssdk.auth.credentials.AwsCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 
 /**
  * Builds and caches one OpenDAL {@link Operator} per S3(-compatible) bucket.
  *
  * <p>OpenDAL binds a single bucket to an {@link Operator} at construction time, while ReportPortal may address many
  * buckets (one per project, unless the {@code singleBucket} feature flag is enabled) through one
- * endpoint/credentials pair. When IAM credentials are used, cached operators for a bucket are rebuilt once the
- * underlying session token nears expiration; statically configured credentials never expire, so those operators are
- * cached for the lifetime of the application.
+ * endpoint/credentials pair. When no static {@code access_key_id}/{@code secret_access_key} are supplied in the base
+ * config, OpenDAL's S3 service resolves and refreshes credentials itself (environment variables, shared profile,
+ * EC2/ECS/EKS instance metadata), so operators can be cached for the lifetime of the application regardless of
+ * credential source.
  */
 public class S3OperatorFactory {
 
-  private static final String ACCESS_KEY_ID = "access_key_id";
-  private static final String SECRET_ACCESS_KEY = "secret_access_key";
   private static final String BUCKET = "bucket";
 
   private final Map<String, String> baseConfig;
-  private final AwsCredentialsProvider credentialsProvider;
-  private final ConcurrentHashMap<String, CachedOperator> operators = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Operator> operators = new ConcurrentHashMap<>();
 
   public S3OperatorFactory(Map<String, String> baseConfig) {
-    this(baseConfig, null);
-  }
-
-  public S3OperatorFactory(Map<String, String> baseConfig, AwsCredentialsProvider credentialsProvider) {
     this.baseConfig = baseConfig;
-    this.credentialsProvider = credentialsProvider;
   }
 
   /**
-   * Returns the {@link Operator} bound to the given bucket, building (or rebuilding, if IAM credentials have expired)
-   * one if necessary.
+   * Returns the {@link Operator} bound to the given bucket, building one if necessary.
    *
    * @param bucket bucket name to operate on
    * @return {@link Operator} scoped to {@code bucket}
    */
   public Operator forBucket(String bucket) {
-    CachedOperator cached = operators.get(bucket);
-    if (cached == null || Instant.now().isAfter(cached.expiresAt())) {
-      cached = buildOperator(bucket);
-      operators.put(bucket, cached);
-    }
-    return cached.operator();
+    return operators.computeIfAbsent(bucket, this::buildOperator);
   }
 
-  private CachedOperator buildOperator(String bucket) {
+  private Operator buildOperator(String bucket) {
     Map<String, String> config = new HashMap<>(baseConfig);
     config.put(BUCKET, bucket);
-    Instant expiresAt = Instant.MAX;
-
-    if (credentialsProvider != null) {
-      AwsCredentials credentials = credentialsProvider.resolveCredentials();
-      config.put(ACCESS_KEY_ID, credentials.accessKeyId());
-      config.put(SECRET_ACCESS_KEY, credentials.secretAccessKey());
-      if (credentials instanceof AwsSessionCredentials sessionCredentials) {
-        expiresAt = sessionCredentials.expirationTime().orElseGet(() -> Instant.now().plusSeconds(3600));
-      }
-    }
-
-    return new CachedOperator(Operator.of("s3", config), expiresAt);
-  }
-
-  private record CachedOperator(Operator operator, Instant expiresAt) {
-
+    return Operator.of("s3", config);
   }
 }
