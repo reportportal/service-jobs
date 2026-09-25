@@ -124,6 +124,7 @@ public class DefectUpdateStatisticsJob extends BaseJob {
       var instanceId = jdbcTemplate.queryForObject(SELECT_INSTANCE_ID_QUERY, String.class);
       try {
         statistics.stream()
+            .filter(stat -> stat.getOrganizationId() != null)
             .collect(Collectors.groupingBy(AnalyticsMetadata::getOrganizationId))
             .forEach((organizationId, orgStatistics) ->
                 sendRequest(buildRequestBody(now, instanceId, organizationId, orgStatistics)));
