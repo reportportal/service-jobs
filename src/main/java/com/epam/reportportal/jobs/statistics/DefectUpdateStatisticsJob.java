@@ -32,6 +32,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -124,10 +125,9 @@ public class DefectUpdateStatisticsJob extends BaseJob {
       var instanceId = jdbcTemplate.queryForObject(SELECT_INSTANCE_ID_QUERY, String.class);
       try {
         statistics.stream()
-            .filter(stat -> stat.getOrganizationId() != null)
-            .collect(Collectors.groupingBy(AnalyticsMetadata::getOrganizationId))
+            .collect(Collectors.groupingBy(stat -> Optional.ofNullable(stat.getOrganizationId())))
             .forEach((organizationId, orgStatistics) ->
-                sendRequest(buildRequestBody(now, instanceId, organizationId, orgStatistics)));
+                sendRequest(buildRequestBody(now, instanceId, organizationId.orElse(null), orgStatistics)));
       } finally {
         jdbcTemplate.execute(DELETE_STATISTICS_QUERY);
       }
@@ -173,8 +173,8 @@ public class DefectUpdateStatisticsJob extends BaseJob {
   }
 
   /**
-   * Accumulates per-organization defect analysis counters across all {@link AnalyticsMetadata}
-   * rows collected for that organization.
+   * Accumulates per-organization defect analysis counters across all {@link AnalyticsMetadata} rows collected for that
+   * organization.
    */
   private static final class DefectAnalysisSummary {
 
@@ -199,13 +199,8 @@ public class DefectUpdateStatisticsJob extends BaseJob {
         autoAnalysisState.add(metadata.isAutoAnalysisOn() ? "on" : "off");
       }
 
-      if (metadata.getUserAnalyzed() > 0) {
-        status.add("manually");
-        sentToAnalyze += metadata.getUserAnalyzed();
-      } else {
-        status.add("automatically");
-        sentToAnalyze += metadata.getSentToAnalyze();
-      }
+      status.add(metadata.getUserAnalyzed() > 0 ? "manually" : "automatically");
+      sentToAnalyze += metadata.getSentToAnalyze();
       skipped += metadata.getSkipped();
 
       userAnalyzed += metadata.getUserAnalyzed();
