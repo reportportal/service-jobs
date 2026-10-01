@@ -35,8 +35,7 @@ jar.enabled(true)
 jar.archiveClassifier.set('')
 
 repositories {
-    mavenCentral { url "https://repo1.maven.org/maven2" }
-    maven { url 'https://repo.spring.io/libs-milestone' }
+    mavenCentral { url "https://maven-central.storage-download.googleapis.com/maven2" }
     maven { url 'https://jitpack.io' }
 }
 
