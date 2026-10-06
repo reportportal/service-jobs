@@ -2,14 +2,12 @@ package com.epam.reportportal.jobs.clean;
 
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import com.epam.reportportal.elastic.SearchEngineClient;
-import com.google.common.collect.Lists;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.IntStream;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -64,7 +62,8 @@ public class CleanLaunchJob extends BaseCleanJob {
     try {
       final LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(duration);
       final List<Long> allLaunchIds = getLaunchIds(projectId, lessThanDate);
-      Lists.partition(allLaunchIds, batchSize)
+      IntStream.iterate(0, i -> i < allLaunchIds.size(), i -> i + batchSize)
+          .mapToObj(i -> allLaunchIds.subList(i, Math.min(i + batchSize, allLaunchIds.size())))
           .forEach(launchIds -> {
             deleteClusters(launchIds);
             int deleted = namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY,
@@ -100,26 +99,5 @@ public class CleanLaunchJob extends BaseCleanJob {
 
   private void deleteClusters(List<Long> launchIds) {
     namedParameterJdbcTemplate.update(DELETE_CLUSTER_QUERY, Map.of(IDS_PARAM, launchIds));
-  }
-
-  private Long countNumberOfLaunchElements(List<Long> launchIds) {
-    final AtomicLong resultedNumber = new AtomicLong(launchIds.size());
-    final List<Long> itemIds = namedParameterJdbcTemplate.queryForList(
-        "SELECT item_id FROM test_item WHERE launch_id IN (:ids) UNION "
-            + "SELECT item_id FROM test_item WHERE retry_of IS NOT NULL AND retry_of IN "
-            + "(SELECT item_id FROM test_item WHERE launch_id IN (:ids))",
-        Map.of(IDS_PARAM, launchIds), Long.class
-    );
-    resultedNumber.addAndGet(itemIds.size());
-    Lists.partition(itemIds, batchSize).forEach(batch -> resultedNumber.addAndGet(
-        Optional.ofNullable(namedParameterJdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM log WHERE item_id IN (:ids);", Map.of(IDS_PARAM, batch),
-            Long.class
-        )).orElse(0L)));
-    resultedNumber.addAndGet(Optional.ofNullable(namedParameterJdbcTemplate.queryForObject(
-        "SELECT COUNT(*) FROM log WHERE log.launch_id IN (:ids);", Map.of(IDS_PARAM, launchIds),
-        Long.class
-    )).orElse(0L));
-    return resultedNumber.longValue();
   }
 }

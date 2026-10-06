@@ -1,5 +1,5 @@
 plugins {
-    id 'org.springframework.boot' version '4.1.1'
+    id 'org.springframework.boot' version '4.2.0-M2'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'java'
     id "com.google.osdetector" version "1.7.3"
@@ -57,22 +57,6 @@ processResources {
 
 dependencies {
 
-    // ── SECURITY PINS ────────────────────────────────────────────────────
-    implementation 'org.apache.tomcat.embed:tomcat-embed-core:11.0.26'
-    implementation 'org.apache.tomcat.embed:tomcat-embed-el:11.0.26'
-    implementation 'org.apache.tomcat.embed:tomcat-embed-websocket:11.0.26'
-
-    implementation 'tools.jackson.core:jackson-core:3.2.3'
-    implementation 'tools.jackson.core:jackson-databind:3.2.3'
-
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.7'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.7'
-
-    implementation 'com.rabbitmq:amqp-client:5.34.0'
-
-    implementation 'ch.qos.logback:logback-classic:1.6.3'
-    implementation 'ch.qos.logback:logback-core:1.6.3'
-
     // ── application dependencies ──────────────────────────────────────────
     implementation "org.json:json:20260814"
     implementation "net.javacrumbs.shedlock:shedlock-spring:7.8.0"
@@ -88,7 +72,6 @@ dependencies {
     implementation "org.apache.opendal:opendal:0.50.6"
     implementation "org.apache.opendal:opendal:0.50.6:$osdetector.classifier"
 
-    implementation "com.google.guava:guava:33.7.2-jre"
     implementation "com.rabbitmq:http-client:5.7.0"
 
     runtimeOnly 'org.postgresql:postgresql'
