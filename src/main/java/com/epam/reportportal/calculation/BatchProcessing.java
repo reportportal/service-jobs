@@ -1,7 +1,7 @@
 package com.epam.reportportal.calculation;
 
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import org.springframework.scheduling.TaskScheduler;
@@ -14,10 +14,10 @@ import org.springframework.scheduling.TaskScheduler;
 public abstract class BatchProcessing<T> {
 
   private final TaskScheduler scheduler;
-  private List<T> objectList;
+  private final List<T> objectList;
   private volatile ScheduledFuture<?> scheduledTask;
-  private int batchSize;
-  private long timeout;
+  private final int batchSize;
+  private final long timeout;
 
   public BatchProcessing(int batchSize, long timeout, TaskScheduler scheduler) {
     if (timeout < 0 || scheduler == null) {
@@ -31,8 +31,8 @@ public abstract class BatchProcessing<T> {
     this.scheduledTask = this.scheduler.schedule(this::processAndSchedule, getNextTime());
   }
 
-  private Date getNextTime() {
-    return new Date(System.currentTimeMillis() + this.timeout);
+  private Instant getNextTime() {
+    return Instant.now().plusMillis(this.timeout);
   }
 
   public void add(T message) {

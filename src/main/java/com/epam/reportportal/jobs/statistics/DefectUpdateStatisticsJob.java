@@ -24,8 +24,8 @@ import com.epam.reportportal.model.ga4.AnalyticsMetadata;
 import com.epam.reportportal.model.ga4.Ga4Event;
 import com.epam.reportportal.model.ga4.Ga4EventParams;
 import com.epam.reportportal.model.ga4.Ga4Request;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -70,7 +70,7 @@ public class DefectUpdateStatisticsJob extends BaseJob {
 
   private final RestTemplate restTemplate;
 
-  private final ObjectMapper objectMapper;
+  private final JsonMapper objectMapper;
 
   private final String mId;
   private final String gaId;
@@ -86,7 +86,7 @@ public class DefectUpdateStatisticsJob extends BaseJob {
       @Value("${rp.environment.variable.ga.mId}") String mId,
       @Value("${rp.environment.variable.ga.id}") String gaId,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-      ObjectMapper objectMapper) {
+      JsonMapper objectMapper) {
     super(jdbcTemplate);
     this.mId = mId;
     this.gaId = gaId;
@@ -140,7 +140,7 @@ public class DefectUpdateStatisticsJob extends BaseJob {
   private AnalyticsMetadata readMetadata(String metadata) {
     try {
       return objectMapper.readValue(metadata, AnalyticsDataRecord.class).getMetadata();
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new IllegalStateException("Unable to parse analytics data metadata", e);
     }
   }
