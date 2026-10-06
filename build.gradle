@@ -57,21 +57,27 @@ processResources {
 
 dependencies {
 
+    // ── SECURITY PINS ────────────────────────────────────────────────────
+    implementation 'tools.jackson.core:jackson-core:3.1.7'
+    implementation 'tools.jackson.core:jackson-databind:3.1.7'
+
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.7'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.7'
+
     // ── application dependencies ──────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-aspectj'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-rabbitmq'
+
     implementation "org.json:json:20260814"
     implementation "net.javacrumbs.shedlock:shedlock-spring:7.8.0"
     implementation "net.javacrumbs.shedlock:shedlock-provider-jdbc-template:7.8.0"
     implementation 'org.apache.commons:commons-lang3'
     implementation "org.apache.commons:commons-compress:1.28.0"
-
-    implementation 'org.springframework.boot:spring-boot-starter-aspectj'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-amqp'
     implementation "org.apache.opendal:opendal:0.50.6"
     implementation "org.apache.opendal:opendal:0.50.6:$osdetector.classifier"
-
     implementation "com.rabbitmq:http-client:5.7.0"
 
     runtimeOnly 'org.postgresql:postgresql'

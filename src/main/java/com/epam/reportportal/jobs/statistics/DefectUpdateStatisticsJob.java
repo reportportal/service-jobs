@@ -16,16 +16,12 @@
 
 package com.epam.reportportal.jobs.statistics;
 
-import static org.springframework.http.HttpMethod.POST;
-
 import com.epam.reportportal.jobs.BaseJob;
 import com.epam.reportportal.model.ga4.AnalyticsDataRecord;
 import com.epam.reportportal.model.ga4.AnalyticsMetadata;
 import com.epam.reportportal.model.ga4.Ga4Event;
 import com.epam.reportportal.model.ga4.Ga4EventParams;
 import com.epam.reportportal.model.ga4.Ga4Request;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.json.JsonMapper;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -39,8 +35,6 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -49,7 +43,9 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Sends statistics about amounts of manual analyzed items to the GA4 service.
@@ -68,7 +64,7 @@ public class DefectUpdateStatisticsJob extends BaseJob {
 
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-  private final RestTemplate restTemplate;
+  private final RestClient restClient;
 
   private final JsonMapper objectMapper;
 
@@ -92,7 +88,7 @@ public class DefectUpdateStatisticsJob extends BaseJob {
     this.gaId = gaId;
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     this.objectMapper = objectMapper;
-    this.restTemplate = new RestTemplate();
+    this.restClient = RestClient.create();
   }
 
 
@@ -218,7 +214,12 @@ public class DefectUpdateStatisticsJob extends BaseJob {
       String body = objectMapper.writeValueAsString(requestBody);
       LOGGER.debug("Sending statistics data: {}", body);
 
-      var response = restTemplate.exchange(gaCollectUrl(), POST, asJsonEntity(body), String.class);
+      var response = restClient.post()
+          .uri(gaCollectUrl())
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(body)
+          .retrieve()
+          .toEntity(String.class);
       if (!response.getStatusCode().equals(HttpStatus.NO_CONTENT)) {
         LOGGER.error("Failed to send statistics: {}", response);
       }
@@ -229,12 +230,6 @@ public class DefectUpdateStatisticsJob extends BaseJob {
 
   private String gaCollectUrl() {
     return String.format(GA_URL, mId, gaId);
-  }
-
-  private HttpEntity<String> asJsonEntity(String body) {
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    return new HttpEntity<>(body, headers);
   }
 
 }
