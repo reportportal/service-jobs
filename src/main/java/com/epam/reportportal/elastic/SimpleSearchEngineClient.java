@@ -10,13 +10,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.support.BasicAuthenticationInterceptor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 /**
  * Simple client to work with Search engine.
@@ -30,19 +28,20 @@ public class SimpleSearchEngineClient implements SearchEngineClient {
 
   protected final Logger LOGGER = LoggerFactory.getLogger(SimpleSearchEngineClient.class);
 
-  private final String host;
-  private final RestTemplate restTemplate;
+  private final RestClient restClient;
 
   public SimpleSearchEngineClient(@Value("${rp.searchengine.host}") String host,
       @Value("${rp.searchengine.username:}") String username,
       @Value("${rp.searchengine.password:}") String password) {
-    restTemplate = new RestTemplate();
+    var builder = RestClient.builder()
+        .baseUrl(host)
+        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
 
     if (!username.isEmpty() && !password.isEmpty()) {
-      restTemplate.getInterceptors().add(new BasicAuthenticationInterceptor(username, password));
+      builder.defaultHeaders(headers -> headers.setBasicAuth(username, password));
     }
 
-    this.host = host;
+    this.restClient = builder.build();
   }
 
   @Override
@@ -65,10 +64,11 @@ public class SimpleSearchEngineClient implements SearchEngineClient {
       }
     });
 
-    logsByIndex.forEach(
-        (indexName, body) -> restTemplate.put(host + "/" + indexName + "/_bulk?refresh",
-            getStringHttpEntity(body)
-        ));
+    logsByIndex.forEach((indexName, body) -> restClient.put()
+        .uri("/{indexName}/_bulk?refresh", indexName)
+        .body(body)
+        .retrieve()
+        .toBodilessEntity());
   }
 
   @Override
@@ -76,14 +76,15 @@ public class SimpleSearchEngineClient implements SearchEngineClient {
     String indexName = "logs-reportportal-" + projectId;
     try {
       JSONObject deleteByLaunch = getDeleteLaunchJson(launchId);
-      HttpEntity<String> deleteRequest = getStringHttpEntity(deleteByLaunch.toString());
 
-      restTemplate.postForObject(host + "/" + indexName + "/_delete_by_query", deleteRequest,
-          JSONObject.class
-      );
+      restClient.post()
+          .uri("/{indexName}/_delete_by_query", indexName)
+          .body(deleteByLaunch.toString())
+          .retrieve()
+          .toBodilessEntity();
     } catch (Exception exception) {
       // to avoid checking of exists stream or not
-      LOGGER.info("DELETE logs from stream ES error " + indexName + " " + exception.getMessage());
+      LOGGER.info("DELETE logs from stream ES error {} {}", indexName, exception.getMessage());
     }
   }
 
@@ -109,12 +110,5 @@ public class SimpleSearchEngineClient implements SearchEngineClient {
     personJsonObject.put("launchId", logMessage.getLaunchId());
 
     return personJsonObject;
-  }
-
-  private HttpEntity<String> getStringHttpEntity(String body) {
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
-    return new HttpEntity<>(body, headers);
   }
 }

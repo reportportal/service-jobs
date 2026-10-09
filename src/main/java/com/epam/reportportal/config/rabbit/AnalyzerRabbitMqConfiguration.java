@@ -19,40 +19,37 @@ package com.epam.reportportal.config.rabbit;
 import com.epam.reportportal.analyzer.RabbitMqManagementClient;
 import com.epam.reportportal.analyzer.RabbitMqManagementClientTemplate;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.http.client.Client;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * @author <a href="mailto:pavel_bortnik@epam.com">Pavel Bortnik</a>
  */
 @EnableRabbit
 @Configuration
+@RequiredArgsConstructor
 public class AnalyzerRabbitMqConfiguration {
 
-  private final ObjectMapper objectMapper;
-
-  @Autowired
-  public AnalyzerRabbitMqConfiguration(ObjectMapper objectMapper) {
-    this.objectMapper = objectMapper;
-  }
+  private final JsonMapper objectMapper;
 
   @Bean
   public MessageConverter jsonMessageConverter() {
-    return new Jackson2JsonMessageConverter(objectMapper);
+    return new JacksonJsonMessageConverter(objectMapper);
   }
 
   @Bean
