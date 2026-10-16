@@ -18,7 +18,6 @@ package com.epam.reportportal.config.rabbit;
 
 import com.epam.reportportal.analyzer.RabbitMqManagementClient;
 import com.epam.reportportal.analyzer.RabbitMqManagementClientTemplate;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.rabbitmq.http.client.Client;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -56,7 +55,7 @@ public class AnalyzerRabbitMqConfiguration {
   public RabbitMqManagementClient managementTemplate(
       @Value("${rp.amqp.api-address}") String address,
       @Value("${rp.amqp.analyzer-vhost}") String virtualHost)
-      throws MalformedURLException, URISyntaxException, JsonProcessingException {
+      throws MalformedURLException, URISyntaxException {
     final Client rabbitClient = new Client(address);
     return new RabbitMqManagementClientTemplate(rabbitClient, virtualHost);
   }

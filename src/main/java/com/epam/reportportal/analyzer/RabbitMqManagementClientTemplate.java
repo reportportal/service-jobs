@@ -19,12 +19,10 @@ package com.epam.reportportal.analyzer;
 import static java.util.Comparator.comparingInt;
 import static java.util.Optional.ofNullable;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.rabbitmq.http.client.Client;
 import com.rabbitmq.http.client.domain.ExchangeInfo;
 import java.util.List;
 import java.util.function.ToIntFunction;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.math.NumberUtils;
 
 /**
@@ -41,8 +39,7 @@ public class RabbitMqManagementClientTemplate implements RabbitMqManagementClien
   private final String virtualHost;
   private final Client rabbitClient;
 
-  public RabbitMqManagementClientTemplate(Client rabbitClient, String virtualHost)
-      throws JsonProcessingException {
+  public RabbitMqManagementClientTemplate(Client rabbitClient, String virtualHost) {
     this.rabbitClient = rabbitClient;
     this.virtualHost = virtualHost;
     rabbitClient.createVhost(virtualHost);
@@ -52,7 +49,7 @@ public class RabbitMqManagementClientTemplate implements RabbitMqManagementClien
     return ofNullable(rabbitClient.getExchanges(virtualHost)).map(client -> client.stream()
             .filter(it -> it.getArguments().get(ANALYZER_KEY) != null)
             .sorted(comparingInt(EXCHANGE_PRIORITY))
-            .collect(Collectors.toList()))
+            .toList())
         .orElseThrow(
             () -> new RuntimeException("Unable to resolve exchanges for key: " + ANALYZER_KEY));
   }
