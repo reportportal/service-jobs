@@ -16,14 +16,12 @@
 
 package com.epam.reportportal.config;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * @author Siarhei Hrabko
@@ -35,13 +33,11 @@ public class JacksonConfiguration {
    * @return Configured object mapper
    */
   @Bean(name = "objectMapper")
-  public ObjectMapper objectMapper() {
-    ObjectMapper om = new ObjectMapper();
-    om.setAnnotationIntrospector(new JacksonAnnotationIntrospector());
-    om.configure(MapperFeature.DEFAULT_VIEW_INCLUSION, true);
-    om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    om.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-    om.registerModule(new JavaTimeModule());
-    return om;
+  public JsonMapper objectMapper() {
+    return JsonMapper.builder()
+        .enable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+        .build();
   }
 }
