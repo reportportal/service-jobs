@@ -16,21 +16,22 @@
 
 package com.epam.reportportal.config.rabbit;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.json.JsonMapper;
 
 
 /**
@@ -38,14 +39,10 @@ import org.springframework.context.annotation.Configuration;
  */
 @EnableRabbit
 @Configuration
+@RequiredArgsConstructor
 public class RabbitMqConfiguration {
 
-  private final ObjectMapper objectMapper;
-
-  @Autowired
-  public RabbitMqConfiguration(ObjectMapper objectMapper) {
-    this.objectMapper = objectMapper;
-  }
+  private final JsonMapper objectMapper;
 
   @Bean(name = "connectionFactory")
   public ConnectionFactory connectionFactory(@Value("${rp.amqp.addresses}") URI addresses,
@@ -78,7 +75,7 @@ public class RabbitMqConfiguration {
       @Autowired @Qualifier("connectionFactory") ConnectionFactory connectionFactory,
       @Value("${rp.amqp.reply-timeout}") long replyTimeout) {
     RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-    rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter(objectMapper));
+    rabbitTemplate.setMessageConverter(new JacksonJsonMessageConverter(objectMapper));
     rabbitTemplate.setReplyTimeout(replyTimeout);
     return rabbitTemplate;
   }

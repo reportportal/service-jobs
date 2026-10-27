@@ -18,13 +18,11 @@ package com.epam.reportportal;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
 
-@SpringBootApplication(scanBasePackages = { "com.epam.reportportal" }, exclude = {
-		FlywayAutoConfiguration.class})
+@SpringBootApplication(scanBasePackages = {"com.epam.reportportal"})
 public class ServiceJobApplication {
 
-  public static void main(String[] args) {
+  static void main(String[] args) {
     SpringApplication.run(ServiceJobApplication.class, args);
   }
 
