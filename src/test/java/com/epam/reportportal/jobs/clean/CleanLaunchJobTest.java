@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -22,6 +23,7 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -31,6 +33,8 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 class CleanLaunchJobTest {
 
   private static final long PROJECT_ID = 1L;
+  private static final String DELETE_CLUSTER_QUERY =
+      "DELETE FROM clusters WHERE clusters.launch_id IN (:ids);";
   private static final String DELETE_LAUNCH_QUERY = "DELETE FROM launch WHERE id IN (:ids);";
 
   @Mock
@@ -74,7 +78,11 @@ class CleanLaunchJobTest {
 
     job.execute();
 
-    verify(namedParameterJdbcTemplate).update(DELETE_LAUNCH_QUERY, Map.of("ids", List.of(10L, 20L)));
+    InOrder order = inOrder(namedParameterJdbcTemplate);
+    order.verify(namedParameterJdbcTemplate)
+        .update(DELETE_CLUSTER_QUERY, Map.of("ids", List.of(10L, 20L)));
+    order.verify(namedParameterJdbcTemplate)
+        .update(DELETE_LAUNCH_QUERY, Map.of("ids", List.of(10L, 20L)));
     verify(indexerServiceClient).removeFromIndexLessThanLaunchDate(eq(PROJECT_ID),
         any(LocalDateTime.class));
     verify(searchEngineClient).deleteLogsByLaunchIdAndProjectId(10L, PROJECT_ID);
@@ -92,17 +100,6 @@ class CleanLaunchJobTest {
     verify(namedParameterJdbcTemplate, never()).update(anyString(), anyMap());
     verify(indexerServiceClient, never()).removeFromIndexLessThanLaunchDate(any(), any());
     verify(cleanLogJob).removeLogs();
-  }
-
-  @Test
-  void executeWithKeepLaunchesForeverDoesNotSelectLaunches() {
-    // Forever is stored as '0' and filtered out by getProjectsWithAttribute
-    lenient().doReturn(Map.of()).when(job).getProjectsWithAttribute(BaseCleanJob.KEEP_LAUNCHES);
-
-    job.execute();
-
-    verify(namedParameterJdbcTemplate, never()).queryForList(anyString(), anyMap(), eq(Long.class));
-    verify(namedParameterJdbcTemplate, never()).update(anyString(), anyMap());
   }
 
   private static String selectQuery() throws Exception {

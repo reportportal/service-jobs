@@ -23,11 +23,13 @@ public class CleanLaunchJob extends BaseCleanJob {
   private static final String IDS_PARAM = "ids";
   private static final String PROJECT_ID_PARAM = "projectId";
   private static final String START_TIME_PARAM = "startTime";
-  private static final String SELECT_LAUNCH_ID_QUERY = """
+  private static final String SELECT_LAUNCH_ID_QUERY =
+      """
       SELECT id FROM launch
       WHERE project_id = :projectId
         AND start_time <= :startTime::TIMESTAMP
-        AND retention_policy = 'REGULAR'""";
+        AND retention_policy = 'REGULAR'
+      """;
   private static final String DELETE_CLUSTER_QUERY =
       "DELETE FROM clusters WHERE clusters.launch_id IN (:ids);";
   private static final String DELETE_LAUNCH_QUERY = "DELETE FROM launch WHERE id IN (:ids);";
