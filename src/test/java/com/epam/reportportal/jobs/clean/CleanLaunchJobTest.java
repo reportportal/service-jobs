@@ -55,7 +55,7 @@ class CleanLaunchJobTest {
   }
 
   @Test
-  void selectQuery_includesManualLaunchesAndKeepsImportantOnes() throws Exception {
+  void selectQueryIncludesManualLaunchesAndKeepsImportantOnes() throws Exception {
     String query = selectQuery();
 
     assertFalse(query.contains("launch_type"),
@@ -65,7 +65,7 @@ class CleanLaunchJobTest {
   }
 
   @Test
-  void execute_withExpiredLaunches_deletesThemAndNotifiesAnalyzerAndSearchEngine()
+  void executeWithExpiredLaunchesDeletesThemAndNotifiesAnalyzerAndSearchEngine()
       throws Exception {
     // 10 = automated, 20 = manual: the job does not distinguish them
     when(namedParameterJdbcTemplate.queryForList(eq(selectQuery()), anyMap(), eq(Long.class)))
@@ -83,7 +83,7 @@ class CleanLaunchJobTest {
   }
 
   @Test
-  void execute_withNoExpiredLaunches_deletesNothing() throws Exception {
+  void executeWithNoExpiredLaunchesDeletesNothing() throws Exception {
     when(namedParameterJdbcTemplate.queryForList(eq(selectQuery()), anyMap(), eq(Long.class)))
         .thenReturn(List.of());
 
@@ -95,7 +95,7 @@ class CleanLaunchJobTest {
   }
 
   @Test
-  void execute_withKeepLaunchesForever_doesNotSelectLaunches() {
+  void executeWithKeepLaunchesForeverDoesNotSelectLaunches() {
     // Forever is stored as '0' and filtered out by getProjectsWithAttribute
     lenient().doReturn(Map.of()).when(job).getProjectsWithAttribute(BaseCleanJob.KEEP_LAUNCHES);
 
