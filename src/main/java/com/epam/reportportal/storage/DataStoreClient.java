@@ -23,19 +23,29 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.opendal.Operator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
 
 /**
- * S3(-compatible) storage service, backed by OpenDAL.
+ * Blob storage service, backed by OpenDAL.
+ *
+ * <p>Works in one of two modes:
+ * <ul>
+ *   <li>per-bucket (S3, S3-compatible, SeaweedFS): every bucket gets its own {@link Operator} from the
+ *   {@link S3OperatorFactory}, and keys are relative to that bucket;</li>
+ *   <li>single container (Azure Blob Storage, Google Cloud Storage): one {@link Operator} is bound to one
+ *   container/bucket, matching the layout service-api writes for these backends. With the {@code singleBucket}
+ *   feature flag enabled, stored paths are used as-is inside the container; otherwise every bucket is a top-level
+ *   directory inside the container.</li>
+ * </ul>
  */
+@Slf4j
 public class DataStoreClient implements DataStore {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataStoreClient.class);
+  private static final String PATH_DELIMITER = "/";
 
-  private final S3OperatorFactory operatorFactory;
+  private final BucketAccess bucketAccess;
   private final String bucketPrefix;
   private final String bucketPostfix;
   private final String defaultBucketName;
@@ -60,7 +70,29 @@ public class DataStoreClient implements DataStore {
   public DataStoreClient(S3OperatorFactory operatorFactory, String bucketPrefix, String bucketPostfix,
       String defaultBucketName, FeatureFlagHandler featureFlagHandler,
       boolean legacyEncodedKeyFallback) {
-    this.operatorFactory = operatorFactory;
+    this(new PerBucketAccess(operatorFactory), bucketPrefix, bucketPostfix, defaultBucketName,
+        featureFlagHandler, legacyEncodedKeyFallback);
+  }
+
+  /**
+   * Creates instance of {@link DataStoreClient} working inside a single container/bucket.
+   *
+   * @param containerOperator  {@link Operator} bound to the container/bucket that holds all files
+   * @param bucketPrefix       Prefix for bucket name
+   * @param bucketPostfix      Postfix for bucket name
+   * @param defaultBucketName  Name for the default bucket(plugins, etc.)
+   * @param featureFlagHandler {@link FeatureFlagHandler}
+   */
+  public DataStoreClient(Operator containerOperator, String bucketPrefix, String bucketPostfix,
+      String defaultBucketName, FeatureFlagHandler featureFlagHandler) {
+    this(new ContainerAccess(containerOperator), bucketPrefix, bucketPostfix, defaultBucketName,
+        featureFlagHandler, false);
+  }
+
+  private DataStoreClient(BucketAccess bucketAccess, String bucketPrefix, String bucketPostfix,
+      String defaultBucketName, FeatureFlagHandler featureFlagHandler,
+      boolean legacyEncodedKeyFallback) {
+    this.bucketAccess = bucketAccess;
     this.bucketPrefix = bucketPrefix;
     this.bucketPostfix = bucketPostfix;
     this.defaultBucketName = defaultBucketName;
@@ -74,7 +106,7 @@ public class DataStoreClient implements DataStore {
       return;
     }
     if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-      removeFiles(defaultBucketName, withLegacyKeys(paths));
+      removeFiles(bucketAccess.singleBucketName(defaultBucketName), withLegacyKeys(paths));
     } else {
       deleteFromProjectBuckets(paths);
     }
@@ -117,21 +149,78 @@ public class DataStoreClient implements DataStore {
   @Override
   public void deleteContainer(String containerName) {
     try {
-      operatorFactory.forBucket(bucketPrefix + containerName + bucketPostfix).removeAll("/");
+      bucketAccess.removeBucket(bucketPrefix + containerName + bucketPostfix);
     } catch (Exception e) {
-      LOGGER.warn("Exception {} is occurred during deleting container", e.getMessage());
+      log.warn("Exception {} is occurred during deleting container", e.getMessage());
     }
   }
 
   private void removeFiles(String bucketName, List<String> paths) {
-    Operator operator = operatorFactory.forBucket(bucketName);
     for (String path : paths) {
       try {
-        operator.delete(path);
+        bucketAccess.delete(bucketName, path);
       } catch (Exception e) {
-        LOGGER.warn("Exception {} is occurred during deleting file", e.getMessage());
+        log.warn("Exception {} is occurred during deleting file", e.getMessage());
       }
     }
   }
 
+  /**
+   * Maps a logical bucket and a key inside it onto OpenDAL operations.
+   */
+  private interface BucketAccess {
+
+    /**
+     * @param defaultBucketName configured default bucket name
+     * @return bucket to use when the {@code singleBucket} feature flag is enabled
+     */
+    String singleBucketName(String defaultBucketName);
+
+    void delete(String bucket, String key);
+
+    void removeBucket(String bucket);
+  }
+
+  /**
+   * One {@link Operator} per bucket, keys are relative to the bucket.
+   */
+  private record PerBucketAccess(S3OperatorFactory operatorFactory) implements BucketAccess {
+
+    @Override
+    public String singleBucketName(String defaultBucketName) {
+      return defaultBucketName;
+    }
+
+    @Override
+    public void delete(String bucket, String key) {
+      operatorFactory.forBucket(bucket).delete(key);
+    }
+
+    @Override
+    public void removeBucket(String bucket) {
+      operatorFactory.forBucket(bucket).removeAll(PATH_DELIMITER);
+    }
+  }
+
+  /**
+   * One {@link Operator} bound to a container, buckets are top-level directories inside it. An empty bucket name
+   * stands for the container root.
+   */
+  private record ContainerAccess(Operator operator) implements BucketAccess {
+
+    @Override
+    public String singleBucketName(String defaultBucketName) {
+      return "";
+    }
+
+    @Override
+    public void delete(String bucket, String key) {
+      operator.delete(bucket.isEmpty() ? key : bucket + PATH_DELIMITER + key);
+    }
+
+    @Override
+    public void removeBucket(String bucket) {
+      operator.removeAll(bucket + PATH_DELIMITER);
+    }
+  }
 }

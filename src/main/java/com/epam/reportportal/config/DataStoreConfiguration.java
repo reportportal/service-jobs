@@ -40,11 +40,13 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 public class DataStoreConfiguration {
 
+  private static final String BUCKET = "bucket";
   private static final String ACCESS_KEY_ID = "access_key_id";
   private static final String SECRET_ACCESS_KEY = "secret_access_key";
   private static final String ENDPOINT = "endpoint";
   private static final String REGION = "region";
   private static final String ROOT = "root";
+  private static final String AZURE_DEFAULT_ENDPOINT_FORMAT = "https://%s.blob.core.windows.net";
 
   @Bean
   @ConditionalOnProperty(name = "datastore.type", havingValue = "filesystem")
@@ -190,6 +192,81 @@ public class DataStoreConfiguration {
     return new DataStoreClient(awsS3OperatorFactory, bucketPrefix, bucketPostfix, defaultBucketName,
         featureFlagHandler
     );
+  }
+
+  /**
+   * Creates OpenDAL Operator for Azure Blob Storage.
+   *
+   * @param accountName Azure account name
+   * @param accountKey  Azure account key
+   * @param endpoint    Azure endpoint (optional, defaults to {@code https://<accountName>.blob.core.windows.net})
+   * @param container   Azure container (optional, but usually required for OpenDAL azblob)
+   * @return {@link Operator}
+   */
+  @Bean
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "azure")
+  public Operator azureBlobOperator(
+      @Value("${datastore.azure.accountName}") String accountName,
+      @Value("${datastore.azure.accountKey}") String accountKey,
+      @Value("${datastore.azure.endpoint:}") String endpoint,
+      @Value("${datastore.azure.container:}") String container) {
+    Map<String, String> config = new HashMap<>();
+    config.put("account_name", accountName);
+    config.put("account_key", accountKey);
+    config.put(ENDPOINT, StringUtils.isNotEmpty(endpoint) ? endpoint
+        : String.format(AZURE_DEFAULT_ENDPOINT_FORMAT, accountName));
+    if (StringUtils.isNotEmpty(container)) {
+      config.put("container", container);
+    }
+    return Operator.of("azblob", config);
+  }
+
+  @Bean
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "azure")
+  public DataStore azureDataStore(@Autowired Operator azureBlobOperator,
+      @Value("${datastore.bucketPrefix}") String bucketPrefix,
+      @Value("${datastore.bucketPostfix}") String bucketPostfix,
+      @Value("${datastore.defaultBucketName}") String defaultBucketName,
+      FeatureFlagHandler featureFlagHandler) {
+    return new DataStoreClient(azureBlobOperator, bucketPrefix, bucketPostfix, defaultBucketName,
+        featureFlagHandler);
+  }
+
+  /**
+   * Creates OpenDAL Operator for Google Cloud Storage.
+   *
+   * @param bucket          GCS bucket name to store objects in
+   * @param credentialsPath path to a GCS service account JSON key file (optional, if not provided OpenDAL falls back
+   *                        to Application Default Credentials)
+   * @param endpoint        GCS endpoint (optional)
+   * @return {@link Operator}
+   */
+  @Bean
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "gcs")
+  public Operator gcsOperator(
+      @Value("${datastore.gcs.bucket}") String bucket,
+      @Value("${datastore.gcs.credentialsPath:}") String credentialsPath,
+      @Value("${datastore.gcs.endpoint:}") String endpoint) {
+    Map<String, String> config = new HashMap<>();
+    config.put(BUCKET, bucket);
+    if (StringUtils.isNotEmpty(credentialsPath)) {
+      config.put("credential_path", credentialsPath);
+    }
+    if (StringUtils.isNotEmpty(endpoint)) {
+      config.put(ENDPOINT, endpoint);
+    }
+    return Operator.of("gcs", config);
+  }
+
+  @Bean
+  @ConditionalOnProperty(name = "datastore.type", havingValue = "gcs")
+  public DataStore gcsDataStore(@Autowired Operator gcsOperator,
+      @Value("${datastore.bucketPrefix}") String bucketPrefix,
+      @Value("${datastore.bucketPostfix}") String bucketPostfix,
+      @Value("${datastore.defaultBucketName}") String defaultBucketName,
+      FeatureFlagHandler featureFlagHandler) {
+    return new DataStoreClient(gcsOperator, bucketPrefix, bucketPostfix, defaultBucketName,
+        featureFlagHandler);
   }
 
   private S3OperatorFactory staticCredentialsOperatorFactory(String accessKey, String secretKey,
