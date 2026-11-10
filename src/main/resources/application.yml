@@ -114,5 +114,14 @@ datastore:
   bucketPostfix:
   defaultBucketName: rp-bucket
   region: #{null}
+  azure:
+    accountName:
+    accountKey:
+    container:
+    endpoint:
+  gcs:
+    bucket:
+    credentialsPath:
+    endpoint:
 
 
