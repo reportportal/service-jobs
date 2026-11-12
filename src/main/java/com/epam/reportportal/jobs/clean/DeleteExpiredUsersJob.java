@@ -76,6 +76,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
               OR (EXTRACT(EPOCH FROM ak.last_used_at) * 1000)::BIGINT <= :retentionPeriod
               OR NOT EXISTS (SELECT 1 FROM api_keys WHERE user_id = u.id AND last_used_at IS NOT NULL))
           AND u.role != 'ADMINISTRATOR'
+          AND NOT (u.type = 'SCIM' AND u.active)
       GROUP BY u.id
       """;
 
