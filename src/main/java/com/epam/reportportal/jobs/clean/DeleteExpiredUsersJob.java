@@ -79,6 +79,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
       OR NOT EXISTS (SELECT 1 FROM api_keys WHERE user_id = u.id AND last_used_at IS NOT NULL)\s
       )\s
       AND u.role != 'ADMINISTRATOR'\s
+      AND NOT (u.type = 'SCIM' AND u.active)\s
       GROUP BY u.id, p.id""";
 
   private static final String DELETE_ATTACHMENTS_BY_PROJECT = """
