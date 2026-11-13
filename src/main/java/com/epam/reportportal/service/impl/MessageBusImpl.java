@@ -20,11 +20,9 @@ import static com.epam.reportportal.config.rabbit.InternalConfiguration.EXCHANGE
 import static com.epam.reportportal.config.rabbit.InternalConfiguration.QUEUE_EMAIL;
 
 import com.epam.reportportal.model.EmailNotificationRequest;
-import com.epam.reportportal.model.activity.Activity;
-import com.epam.reportportal.model.activity.ActivityEvent;
+import com.epam.reportportal.model.event.domain.AbstractEvent;
 import com.epam.reportportal.service.MessageBus;
 import java.util.List;
-import java.util.Objects;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -37,6 +35,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class MessageBusImpl implements MessageBus {
 
+  private static final String DOMAIN_EVENTS_EXCHANGE = "domain.events";
+
   private final RabbitTemplate rabbitTemplate;
 
   public MessageBusImpl(@Qualifier("rabbitTemplate") RabbitTemplate rabbitTemplate) {
@@ -44,24 +44,15 @@ public class MessageBusImpl implements MessageBus {
   }
 
   /**
-   * Publishes activity to the queue with the following routing key.
+   * Publishes domain event to RabbitMQ. Events are published as-is (no conversion) to the
+   * domain.events exchange.
    *
-   * @param event Activity event to be converted to Activity object
-   * @author Ryhor_Kuharenka
+   * @param event The domain event to publish
    */
   @Override
-  public void publishActivity(ActivityEvent event) {
-    final Activity activity = event.toActivity();
-    if (Objects.nonNull(activity)) {
-      rabbitTemplate.convertAndSend("activity", generateKeyForActivity(activity), activity);
-    }
-  }
-
-  private String generateKeyForActivity(Activity activity) {
-    return String.format("activity.%d.%s.%s",
-        activity.getProjectId(),
-        activity.getObjectType(),
-        activity.getEventName());
+  public void publishDomainEvent(AbstractEvent<?> event) {
+    String routingKey = String.format("domain.%s", event.getClass().getSimpleName());
+    rabbitTemplate.convertAndSend(DOMAIN_EVENTS_EXCHANGE, routingKey, event);
   }
 
   @Override

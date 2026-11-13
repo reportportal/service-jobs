@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -29,7 +28,7 @@ public class CleanLaunchJob extends BaseCleanJob {
   private static final String START_TIME_PARAM = "startTime";
   private static final String SELECT_LAUNCH_ID_QUERY =
       "SELECT id FROM launch WHERE project_id = :projectId AND start_time <= "
-          + ":startTime::TIMESTAMP AND retention_policy = 'REGULAR'";
+          + ":startTime::TIMESTAMP AND retention_policy = 'REGULAR' AND launch_type <> 'MANUAL'";
   private static final String DELETE_CLUSTER_QUERY =
       "DELETE FROM clusters WHERE clusters.launch_id IN (:ids);";
   private static final String DELETE_LAUNCH_QUERY = "DELETE FROM launch WHERE id IN (:ids);";
@@ -37,19 +36,17 @@ public class CleanLaunchJob extends BaseCleanJob {
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
   private final CleanLogJob cleanLogJob;
   private final IndexerServiceClient indexerServiceClient;
-  private final ApplicationEventPublisher eventPublisher;
   private final SearchEngineClient searchEngineClient;
 
   public CleanLaunchJob(
       @Value("${rp.environment.variable.batch-size:10000}") Integer batchSize,
       JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
       CleanLogJob cleanLogJob, IndexerServiceClient indexerServiceClient,
-      ApplicationEventPublisher eventPublisher, SearchEngineClient searchEngineClient) {
+      SearchEngineClient searchEngineClient) {
     super(jdbcTemplate);
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     this.cleanLogJob = cleanLogJob;
     this.indexerServiceClient = indexerServiceClient;
-    this.eventPublisher = eventPublisher;
     this.searchEngineClient = searchEngineClient;
     this.batchSize = batchSize > 65535 ? 65535 : batchSize;
   }
@@ -70,7 +67,8 @@ public class CleanLaunchJob extends BaseCleanJob {
       Lists.partition(allLaunchIds, batchSize)
           .forEach(launchIds -> {
             deleteClusters(launchIds);
-            int deleted = namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY, Map.of(IDS_PARAM, launchIds));
+            int deleted = namedParameterJdbcTemplate.update(DELETE_LAUNCH_QUERY,
+                Map.of(IDS_PARAM, launchIds));
             LOGGER.info("Delete {} launches for project {}", deleted, projectId);
             // to avoid an error message in the analyzer log, doesn't find the index
             if (deleted > 0) {
