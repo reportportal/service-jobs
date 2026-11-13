@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 EPAM Systems
+ * Copyright 2026 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,24 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.storage;
+package com.epam.reportportal.model.ga4;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import lombok.Builder;
+import lombok.Getter;
 
 /**
- * Storage service interface
+ * Represents a GA4 Measurement Protocol collect request body.
  */
-public interface DataStorageService {
-  void deleteAll(List<String> paths) throws Exception;
+@Getter
+@Builder
+public class Ga4Request {
 
-  void deleteContainer(String containerName) throws Exception;
+  @JsonProperty("client_id")
+  private final String clientId;
+
+  @JsonProperty("events")
+  private final List<Ga4Event> events;
+
 }
