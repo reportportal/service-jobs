@@ -20,25 +20,22 @@ import com.epam.reportportal.utils.FeatureFlag;
 import com.epam.reportportal.utils.FeatureFlagHandler;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.jclouds.blobstore.BlobStore;
+import org.apache.opendal.Operator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
 
 /**
- * S3 storage service.
+ * S3(-compatible) storage service, backed by OpenDAL.
  */
-public class S3DataStorageService implements DataStorageService {
+public class DataStoreClient implements DataStore {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(S3DataStorageService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataStoreClient.class);
 
-  private final BlobStore blobStore;
+  private final S3OperatorFactory operatorFactory;
   private final String bucketPrefix;
   private final String bucketPostfix;
   private final String defaultBucketName;
@@ -46,26 +43,24 @@ public class S3DataStorageService implements DataStorageService {
 
   private final FeatureFlagHandler featureFlagHandler;
 
-  private static final String PROJECT_PREFIX = "/project-data/";
-
   /**
-   * Creates instance of {@link S3DataStorageService}.
+   * Creates instance of {@link DataStoreClient}.
    *
-   * @param blobStore          {@link BlobStore}
+   * @param operatorFactory    {@link S3OperatorFactory} providing a per-bucket {@link Operator}
    * @param bucketPrefix       Prefix for bucket name
    * @param bucketPostfix      Postfix for bucket name
    * @param defaultBucketName  Name for the default bucket(plugins, etc.)
    * @param featureFlagHandler {@link FeatureFlagHandler}
    */
-  public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String bucketPostfix,
+  public DataStoreClient(S3OperatorFactory operatorFactory, String bucketPrefix, String bucketPostfix,
       String defaultBucketName, FeatureFlagHandler featureFlagHandler) {
-    this(blobStore, bucketPrefix, bucketPostfix, defaultBucketName, featureFlagHandler, false);
+    this(operatorFactory, bucketPrefix, bucketPostfix, defaultBucketName, featureFlagHandler, false);
   }
 
-  public S3DataStorageService(BlobStore blobStore, String bucketPrefix, String bucketPostfix,
+  public DataStoreClient(S3OperatorFactory operatorFactory, String bucketPrefix, String bucketPostfix,
       String defaultBucketName, FeatureFlagHandler featureFlagHandler,
       boolean legacyEncodedKeyFallback) {
-    this.blobStore = blobStore;
+    this.operatorFactory = operatorFactory;
     this.bucketPrefix = bucketPrefix;
     this.bucketPostfix = bucketPostfix;
     this.defaultBucketName = defaultBucketName;
@@ -74,46 +69,37 @@ public class S3DataStorageService implements DataStorageService {
   }
 
   @Override
-  public void deleteAll(List<String> paths) throws Exception {
+  public void deleteAll(List<String> paths) {
     if (CollectionUtils.isEmpty(paths)) {
       return;
     }
     if (featureFlagHandler.isEnabled(FeatureFlag.SINGLE_BUCKET)) {
-      List<String> keys = new ArrayList<>(paths);
-      if (legacyEncodedKeyFallback) {
-        for (String path : paths) {
-          String legacyKey = urlEncodeKey(path);
-          if (!legacyKey.equals(path)) {
-            keys.add(legacyKey);
-          }
-        }
-      }
-      removeFiles(defaultBucketName, keys);
+      removeFiles(defaultBucketName, withLegacyKeys(paths));
     } else {
-      Map<String, List<String>> bucketPathMap = new HashMap<>();
-      for (String path : paths) {
-        Path targetPath = Paths.get(path);
-        int nameCount = targetPath.getNameCount();
-        String bucket = retrievePath(targetPath, 0, 1);
-        String cutPath = retrievePath(targetPath, 1, nameCount);
-        if (bucketPathMap.containsKey(bucket)) {
-          bucketPathMap.get(bucket).add(cutPath);
-        } else {
-          List<String> bucketPaths = new ArrayList<>();
-          bucketPaths.add(cutPath);
-          bucketPathMap.put(bucket, bucketPaths);
-        }
-        if (legacyEncodedKeyFallback) {
-          String legacyKey = urlEncodeKey(cutPath);
-          if (!legacyKey.equals(cutPath)) {
-            bucketPathMap.get(bucket).add(legacyKey);
-          }
-        }
-      }
-      for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
-        removeFiles(bucketPrefix + bucketPaths.getKey() + bucketPostfix, bucketPaths.getValue());
+      deleteFromProjectBuckets(paths);
+    }
+  }
+
+  private void deleteFromProjectBuckets(List<String> paths) {
+    Map<String, List<String>> bucketPathMap = BucketPathResolver.groupByBucket(paths);
+    for (Map.Entry<String, List<String>> bucketPaths : bucketPathMap.entrySet()) {
+      removeFiles(bucketPrefix + bucketPaths.getKey() + bucketPostfix,
+          withLegacyKeys(bucketPaths.getValue()));
+    }
+  }
+
+  private List<String> withLegacyKeys(List<String> keys) {
+    if (!legacyEncodedKeyFallback) {
+      return keys;
+    }
+    List<String> keysWithLegacyFallback = new ArrayList<>(keys);
+    for (String key : keys) {
+      String legacyKey = urlEncodeKey(key);
+      if (!legacyKey.equals(key)) {
+        keysWithLegacyFallback.add(legacyKey);
       }
     }
+    return keysWithLegacyFallback;
   }
 
   private String urlEncodeKey(String key) {
@@ -131,21 +117,20 @@ public class S3DataStorageService implements DataStorageService {
   @Override
   public void deleteContainer(String containerName) {
     try {
-      blobStore.deleteContainer(bucketPrefix + containerName + bucketPostfix);
+      operatorFactory.forBucket(bucketPrefix + containerName + bucketPostfix).removeAll("/");
     } catch (Exception e) {
       LOGGER.warn("Exception {} is occurred during deleting container", e.getMessage());
     }
   }
 
-  private String retrievePath(Path path, int beginIndex, int endIndex) {
-    return String.valueOf(path.subpath(beginIndex, endIndex));
-  }
-
   private void removeFiles(String bucketName, List<String> paths) {
-    try {
-      blobStore.removeBlobs(bucketName, paths);
-    } catch (Exception e) {
-      LOGGER.warn("Exception {} is occurred during deleting file", e.getMessage());
+    Operator operator = operatorFactory.forBucket(bucketName);
+    for (String path : paths) {
+      try {
+        operator.delete(path);
+      } catch (Exception e) {
+        LOGGER.warn("Exception {} is occurred during deleting file", e.getMessage());
+      }
     }
   }
 

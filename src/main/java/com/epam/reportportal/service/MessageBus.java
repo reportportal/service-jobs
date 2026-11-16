@@ -17,7 +17,7 @@
 package com.epam.reportportal.service;
 
 import com.epam.reportportal.model.EmailNotificationRequest;
-import com.epam.reportportal.model.activity.ActivityEvent;
+import com.epam.reportportal.model.event.domain.AbstractEvent;
 import java.util.List;
 
 /**
@@ -27,7 +27,12 @@ import java.util.List;
  */
 public interface MessageBus {
 
-  void publishActivity(ActivityEvent event);
+  /**
+   * Publishes a domain event to the message broker.
+   *
+   * @param event The domain event to publish
+   */
+  void publishDomainEvent(AbstractEvent<?> event);
 
   void publishEmailNotificationEvents(List<EmailNotificationRequest> notifications);
 

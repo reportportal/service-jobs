@@ -19,11 +19,9 @@ package com.epam.reportportal.jobs.clean;
 import com.epam.reportportal.analyzer.index.IndexerServiceClient;
 import com.epam.reportportal.jobs.BaseJob;
 import com.epam.reportportal.model.EmailNotificationRequest;
-import com.epam.reportportal.model.activity.event.ProjectDeletedEvent;
-import com.epam.reportportal.model.activity.event.UnassignUserEvent;
-import com.epam.reportportal.model.activity.event.UserDeletedEvent;
+import com.epam.reportportal.model.event.domain.UsersDeletedEvent;
 import com.epam.reportportal.service.MessageBus;
-import com.epam.reportportal.storage.DataStorageService;
+import com.epam.reportportal.storage.DataStore;
 import com.epam.reportportal.utils.DataStorageUtils;
 import com.epam.reportportal.utils.ValidationUtil;
 import java.time.LocalDateTime;
@@ -31,7 +29,6 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
@@ -48,7 +45,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 /**
- * Deleting Users and their personal project by retention policy.
+ * Deleting Users and their personal organizations by retention policy. Personal organizations and
+ * their projects are cascade deleted when users are deleted.
  *
  * @author Andrei Piankouski
  */
@@ -67,19 +65,27 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private static final String USER_DELETION_TEMPLATE = "userDeletionNotification";
 
   private static final String SELECT_EXPIRED_USERS = """
-      SELECT u.id AS user_id,\s
-      p.id AS project_id, u.email AS user_email\s
-      FROM users u\s
-      LEFT JOIN api_keys ak ON u.id = ak.user_id\s
-      LEFT JOIN project p ON u.login || '_personal' = p.name AND p.project_type = 'PERSONAL'\s
-      WHERE (u.metadata->'metadata'->>'last_login')::BIGINT <= :retentionPeriod\s
-      AND (\s
-      ak.user_id IS NULL\s
-      OR (EXTRACT(EPOCH FROM ak.last_used_at) * 1000)::BIGINT <= :retentionPeriod\s
-      OR NOT EXISTS (SELECT 1 FROM api_keys WHERE user_id = u.id AND last_used_at IS NOT NULL)\s
-      )\s
-      AND u.role != 'ADMINISTRATOR'\s
-      GROUP BY u.id, p.id""";
+      SELECT
+          u.id AS user_id,
+          u.email AS user_email
+      FROM users u
+      LEFT JOIN api_keys ak ON u.id = ak.user_id
+      WHERE
+          (u.metadata->'metadata'->>'last_login')::BIGINT <= :retentionPeriod
+          AND (ak.user_id IS NULL
+              OR (EXTRACT(EPOCH FROM ak.last_used_at) * 1000)::BIGINT <= :retentionPeriod
+              OR NOT EXISTS (SELECT 1 FROM api_keys WHERE user_id = u.id AND last_used_at IS NOT NULL))
+          AND u.role != 'ADMINISTRATOR'
+          AND NOT (u.type = 'SCIM' AND u.active)
+      GROUP BY u.id
+      """;
+
+  private static final String SELECT_PERSONAL_PROJECTS = """
+      SELECT p.id AS project_id
+      FROM project p
+      JOIN organization o ON p.organization_id = o.id
+      WHERE o.owner_id IN (:userIds)
+      """;
 
   private static final String DELETE_ATTACHMENTS_BY_PROJECT = """
       WITH moved_rows AS (DELETE FROM attachment\s
@@ -104,14 +110,14 @@ public class DeleteExpiredUsersJob extends BaseJob {
       UNION\s
       SELECT attachment_thumbnail FROM users WHERE (id IN (:userIds) AND attachment_thumbnail IS NOT NULL)""";
 
-  private static final String DELETE_PROJECTS_BY_ID_LIST =
-      "DELETE FROM project WHERE id IN (:projectIds)";
 
   private static final String FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS = """
-      SELECT p.id\s
-      FROM project_user pu\s
-      JOIN project p ON pu.project_id = p.id\s
-      WHERE p.project_type != 'PERSONAL' AND pu.user_id IN (:userIds)""";
+      SELECT p.id, p.organization_id
+      FROM project_user pu
+      JOIN project p ON pu.project_id = p.id
+      JOIN organization o ON p.organization_id = o.id
+      WHERE o.owner_id IS NULL AND pu.user_id IN (:userIds)
+      """;
 
   private static final String QUERY_EXISTS_LAUNCH = """
       SELECT EXISTS (
@@ -122,7 +128,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
 
   @Value("${rp.environment.variable.clean.expiredUser.retentionPeriod}")
   private Long retentionPeriod;
-  private final DataStorageService dataStorageService;
+  private final DataStore dataStore;
 
   private final IndexerServiceClient indexerServiceClient;
 
@@ -131,11 +137,11 @@ public class DeleteExpiredUsersJob extends BaseJob {
   @Autowired
   public DeleteExpiredUsersJob(JdbcTemplate jdbcTemplate,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-      DataStorageService dataStorageService, IndexerServiceClient indexerServiceClient,
+      DataStore dataStore, IndexerServiceClient indexerServiceClient,
       MessageBus messageBus) {
     super(jdbcTemplate);
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
-    this.dataStorageService = dataStorageService;
+    this.dataStore = dataStore;
     this.indexerServiceClient = indexerServiceClient;
     this.messageBus = messageBus;
   }
@@ -149,19 +155,14 @@ public class DeleteExpiredUsersJob extends BaseJob {
       return;
     }
 
-    List<UserProject> userProjects = findUsersAndPersonalProjects();
-    List<Long> userIds = getUserIds(userProjects);
-
-    List<Long> personalProjectIds = getProjectIds(userProjects);
-    List<Long> nonPersonalProjectsByUserIds = findNonPersonalProjectIdsByUserIds(userIds);
+    List<User> users = findExpiredUsers();
+    List<Long> userIds = getUserIds(users);
+    List<Long> personalProjectIds = getPersonalProjectIds(userIds);
 
     deleteUsersPhoto(userIds);
-    deleteUsersByIds(userIds);
-    publishUnassignUserEvents(nonPersonalProjectsByUserIds);
     personalProjectIds.forEach(this::deleteProjectAssociatedData);
-    deleteProjectsByIds(personalProjectIds);
-
-    publishEmailNotificationEvents(getUserEmails(userProjects));
+    deleteUsersByIds(userIds);
+    publishEmailNotificationEvents(getUserEmails(users));
 
     LOGGER.info("{} - users was deleted due to retention policy", userIds.size());
   }
@@ -176,7 +177,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
           .map(DataStorageUtils::decode)
           .toList();
       try {
-        dataStorageService.deleteAll(userAttachments);
+        dataStore.deleteAll(userAttachments);
       } catch (Exception e) {
         LOGGER.error("Failed to delete users photo from data storage: {}", userAttachments, e);
       }
@@ -186,35 +187,48 @@ public class DeleteExpiredUsersJob extends BaseJob {
   private void publishEmailNotificationEvents(List<String> userEmails) {
     List<EmailNotificationRequest> notifications = userEmails.stream()
         .map(recipient -> new EmailNotificationRequest(recipient, USER_DELETION_TEMPLATE))
-        .collect(Collectors.toList());
+        .toList();
     messageBus.publishEmailNotificationEvents(notifications);
   }
 
-  private void publishUnassignUserEvents(List<Long> nonPersonalProjectsByUserIds) {
-    nonPersonalProjectsByUserIds.forEach(
-        projectId -> messageBus.publishActivity(new UnassignUserEvent(projectId)));
+  private List<ProjectOrganization> findNonPersonalProjectsByUserIds(List<Long> userIds) {
+    if (CollectionUtils.isEmpty(userIds)) {
+      return Collections.emptyList();
+    }
+
+    RowMapper<ProjectOrganization> rowMapper = (rs, rowNum) -> {
+      ProjectOrganization projectOrg = new ProjectOrganization();
+      projectOrg.setProjectId(rs.getLong("id"));
+      projectOrg.setOrganizationId(rs.getLong("organization_id"));
+      return projectOrg;
+    };
+
+    return namedParameterJdbcTemplate.query(FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS,
+        Map.of(USER_IDS, userIds), rowMapper);
   }
 
-  private List<Long> findNonPersonalProjectIdsByUserIds(List<Long> userIds) {
-    return CollectionUtils.isEmpty(userIds) ? Collections.emptyList() :
-        namedParameterJdbcTemplate.queryForList(FIND_NON_PERSONAL_PROJECTS_BY_USER_IDS,
-            Map.of(USER_IDS, userIds), Long.class
-        );
-  }
-
-  private List<UserProject> findUsersAndPersonalProjects() {
+  private List<User> findExpiredUsers() {
     MapSqlParameterSource params = new MapSqlParameterSource();
     params.addValue(RETENTION_PERIOD, lastLoginBorder());
 
-    RowMapper<UserProject> rowMapper = (rs, rowNum) -> {
-      UserProject userProject = new UserProject();
-      userProject.setUserId(rs.getLong("user_id"));
-      userProject.setProjectId(rs.getLong("project_id"));
-      userProject.setEmail(rs.getString("user_email"));
-      return userProject;
+    RowMapper<User> rowMapper = (rs, rowNum) -> {
+      User user = new User();
+      user.setUserId(rs.getLong("user_id"));
+      user.setEmail(rs.getString("user_email"));
+      return user;
     };
 
     return namedParameterJdbcTemplate.query(SELECT_EXPIRED_USERS, params, rowMapper);
+  }
+
+  private List<Long> getPersonalProjectIds(List<Long> userIds) {
+    if (CollectionUtils.isEmpty(userIds)) {
+      return Collections.emptyList();
+    }
+
+    MapSqlParameterSource params = new MapSqlParameterSource();
+    params.addValue(USER_IDS, userIds);
+    return namedParameterJdbcTemplate.queryForList(SELECT_PERSONAL_PROJECTS, params, Long.class);
   }
 
   private void deleteProjectAssociatedData(Long projectId) {
@@ -240,7 +254,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
       MapSqlParameterSource params = new MapSqlParameterSource();
       params.addValue(USER_IDS, userIds);
       namedParameterJdbcTemplate.update(DELETE_USERS, params);
-      messageBus.publishActivity(new UserDeletedEvent(userIds.size()));
+      messageBus.publishDomainEvent(new UsersDeletedEvent(userIds.size()));
     }
   }
 
@@ -256,39 +270,26 @@ public class DeleteExpiredUsersJob extends BaseJob {
     namedParameterJdbcTemplate.update(DELETE_ATTACHMENTS_BY_PROJECT, params);
   }
 
-  private void deleteProjectsByIds(List<Long> projectIds) {
-    if (!projectIds.isEmpty()) {
-      MapSqlParameterSource params = new MapSqlParameterSource();
-      params.addValue("projectIds", projectIds);
-      namedParameterJdbcTemplate.update(DELETE_PROJECTS_BY_ID_LIST, params);
-      messageBus.publishActivity(new ProjectDeletedEvent(projectIds.size()));
-    }
-  }
-
   private long lastLoginBorder() {
     return LocalDateTime.now().minusDays(retentionPeriod).toInstant(ZoneOffset.UTC).toEpochMilli();
   }
 
-  private List<Long> getUserIds(List<UserProject> userProjects) {
-    return userProjects.stream().map(UserProject::getUserId).collect(Collectors.toList());
+  private List<Long> getUserIds(List<User> users) {
+    return users.stream()
+        .map(User::getUserId)
+        .collect(Collectors.toList());
   }
 
-  private List<String> getUserEmails(List<UserProject> userProjects) {
-    return userProjects.stream().map(UserProject::getEmail).collect(Collectors.toList());
+  private List<String> getUserEmails(List<User> users) {
+    return users.stream()
+        .map(User::getEmail)
+        .collect(Collectors.toList());
   }
 
-  private List<Long> getProjectIds(List<UserProject> userProjects) {
-    return userProjects.stream()
-        .filter(Objects::nonNull)
-        .map(UserProject::getProjectId)
-        .filter(projectId -> projectId > 0)
-        .toList();
-  }
 
-  private static class UserProject {
+  static class User {
 
     private long userId;
-    private long projectId;
     private String email;
 
     public long getUserId() {
@@ -306,13 +307,27 @@ public class DeleteExpiredUsersJob extends BaseJob {
     public void setEmail(String email) {
       this.email = email;
     }
+  }
 
-    public long getProjectId() {
+  static class ProjectOrganization {
+
+    private Long projectId;
+    private Long organizationId;
+
+    public Long getProjectId() {
       return projectId;
     }
 
-    public void setProjectId(long projectId) {
+    public void setProjectId(Long projectId) {
       this.projectId = projectId;
+    }
+
+    public Long getOrganizationId() {
+      return organizationId;
+    }
+
+    public void setOrganizationId(Long organizationId) {
+      this.organizationId = organizationId;
     }
   }
 }

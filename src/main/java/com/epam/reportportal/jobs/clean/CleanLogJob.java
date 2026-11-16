@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -39,18 +38,15 @@ public class CleanLogJob extends BaseCleanJob {
 
   private final CleanAttachmentJob cleanAttachmentJob;
   private final IndexerServiceClient indexerServiceClient;
-  private final ApplicationEventPublisher eventPublisher;
   private final SearchEngineClient searchEngineClient;
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
   public CleanLogJob(JdbcTemplate jdbcTemplate, CleanAttachmentJob cleanAttachmentJob,
-      IndexerServiceClient indexerServiceClient, ApplicationEventPublisher eventPublisher,
-      SearchEngineClient searchEngineClient,
+      IndexerServiceClient indexerServiceClient, SearchEngineClient searchEngineClient,
       NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
     super(jdbcTemplate);
     this.cleanAttachmentJob = cleanAttachmentJob;
     this.indexerServiceClient = indexerServiceClient;
-    this.eventPublisher = eventPublisher;
     this.searchEngineClient = searchEngineClient;
     this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
   }
