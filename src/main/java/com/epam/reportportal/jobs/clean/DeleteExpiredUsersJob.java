@@ -92,7 +92,7 @@ public class DeleteExpiredUsersJob extends BaseJob {
       WHERE project_id = :projectId RETURNING id, file_id, thumbnail_id, creation_date)\s
       INSERT INTO attachment_deletion\s
       (id, file_id, thumbnail_id, creation_attachment_date, deletion_date)\s
-      SELECT id, file_id, thumbnail_id, creation_date, NOW() FROM moved_rows""";
+      SELECT id, file_id, thumbnail_id, creation_date, NOW() AT TIME ZONE 'UTC' FROM moved_rows""";
 
   private static final String DELETE_PROJECT_ISSUE_TYPES = """
       DELETE FROM issue_type\s

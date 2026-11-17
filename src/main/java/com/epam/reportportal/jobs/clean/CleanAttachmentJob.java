@@ -29,7 +29,7 @@ public class CleanAttachmentJob extends BaseCleanJob {
       					)
            INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date,
       deletion_date)
-      SELECT id, file_id, thumbnail_id, creation_date, NOW() FROM moved_rows;""";
+      SELECT id, file_id, thumbnail_id, creation_date, NOW() AT TIME ZONE 'UTC' FROM moved_rows;""";
 
   public CleanAttachmentJob(JdbcTemplate jdbcTemplate) {
     super(jdbcTemplate);
