@@ -18,6 +18,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
@@ -39,8 +40,8 @@ public class IndexerServiceClientImpl implements IndexerServiceClient {
 	private static final String REMOVE_SUGGEST_ROUTE = "remove_suggest_info";
 	static final String DELETE_ROUTE = "delete";
 	private static final Integer DELETE_INDEX_SUCCESS_CODE = 1;
-	// need to be in line with analyzer API, better to fix api and remove it in future.
-	private static final LocalDateTime OLDEST_DATE = LocalDateTime.now().minusYears(10L);
+	// need to be in line with analyzer API, better to fix api and remove it in the future.
+	private static final LocalDateTime OLDEST_DATE = LocalDateTime.now(ZoneOffset.UTC).minusYears(10L);
 
   private final RabbitMqManagementClient rabbitMqManagementClient;
   private final RabbitTemplate rabbitTemplate;
