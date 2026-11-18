@@ -22,14 +22,15 @@ public class CleanAttachmentJob extends BaseCleanJob {
         DELETE FROM attachment\s
         WHERE project_id = ?\s
         AND creation_date <= ?::TIMESTAMP\s
-        AND launch_id NOT IN (
-          SELECT id FROM launch WHERE retention_policy='IMPORTANT'
+        AND NOT EXISTS (
+          SELECT 1 FROM launch WHERE launch.id = attachment.launch_id
+            AND launch.retention_policy='IMPORTANT'
         )\s
         RETURNING *
       					)
            INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date,
       deletion_date)
-      SELECT id, file_id, thumbnail_id, creation_date, NOW() FROM moved_rows;""";
+      SELECT id, file_id, thumbnail_id, creation_date, NOW() AT TIME ZONE 'UTC' FROM moved_rows;""";
 
   public CleanAttachmentJob(JdbcTemplate jdbcTemplate) {
     super(jdbcTemplate);
