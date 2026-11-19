@@ -92,7 +92,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
     implementation 'org.springframework:spring-jdbc'
     implementation "org.apache.opendal:opendal:0.49.0"
-    implementation "org.apache.opendal:opendal:0.49.0:$osdetector.classifier"
+    // OpenDAL loads /native/<classifier>/libopendal_java.* for the OS/arch it runs on. The jar is built once
+    // (Docker BUILDPLATFORM) and must run on Linux and macOS, x86_64 and arm64, so bundle all four natives
+    // into BOOT-INF/lib instead of detecting the build host. musl (Alpine) and Windows are not supported.
+    ['linux-x86_64', 'linux-aarch_64', 'osx-x86_64', 'osx-aarch_64'].each { nativeClassifier ->
+        runtimeOnly "org.apache.opendal:opendal:0.49.0:${nativeClassifier}"
+    }
 
     implementation 'com.google.guava:guava:33.5.0-jre'
 
