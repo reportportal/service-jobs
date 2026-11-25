@@ -9,6 +9,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -75,6 +76,18 @@ class CleanTmsAttachmentJobTest {
 
     verify(namedParameterJdbcTemplate, never()).update(contains("INSERT INTO attachment_deletion"),
         anyMap());
+  }
+
+  @Test
+  void executeMovesUnlinkedAttachmentsUntilNothingLeft() {
+    when(jdbcTemplate.queryForList(anyString(), eq(Long.class), eq(100))).thenReturn(List.of());
+    lenient().when(jdbcTemplate.update(contains("t.created_at <="), any(LocalDateTime.class), eq(100)))
+        .thenReturn(100).thenReturn(7).thenReturn(0);
+
+    job.execute();
+
+    verify(jdbcTemplate, times(3)).update(contains("t.created_at <="), any(LocalDateTime.class),
+        eq(100));
   }
 
   @Test

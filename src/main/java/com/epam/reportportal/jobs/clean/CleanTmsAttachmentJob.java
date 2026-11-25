@@ -1,5 +1,6 @@
 package com.epam.reportportal.jobs.clean;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -25,25 +26,25 @@ public class CleanTmsAttachmentJob extends BaseCleanJob {
 
   private static final String SELECT_ORPHAN_EXECUTIONS =
       """
-      SELECT e.id FROM tms_test_case_execution e
-      WHERE NOT EXISTS (SELECT 1 FROM launch l WHERE l.id = e.launch_id)
-      LIMIT ?
-      """;
+          SELECT e.id FROM tms_test_case_execution e
+          WHERE NOT EXISTS (SELECT 1 FROM launch l WHERE l.id = e.launch_id)
+          LIMIT ?
+          """;
 
   private static final String SELECT_EXECUTION_ATTACHMENTS =
       """
-      SELECT DISTINCT ca.attachment_id
-      FROM tms_test_case_execution_comment_attachment ca
-      JOIN tms_test_case_execution_comment c ON c.id = ca.execution_comment_id
-      WHERE c.execution_id IN (:ids)
-      """;
+          SELECT DISTINCT ca.attachment_id
+          FROM tms_test_case_execution_comment_attachment ca
+          JOIN tms_test_case_execution_comment c ON c.id = ca.execution_comment_id
+          WHERE c.execution_id IN (:ids)
+          """;
 
   private static final String DELETE_COMMENT_ATTACHMENTS =
       """
-      DELETE FROM tms_test_case_execution_comment_attachment
-      WHERE execution_comment_id IN
-        (SELECT id FROM tms_test_case_execution_comment WHERE execution_id IN (:ids))
-      """;
+          DELETE FROM tms_test_case_execution_comment_attachment
+          WHERE execution_comment_id IN
+            (SELECT id FROM tms_test_case_execution_comment WHERE execution_id IN (:ids))
+          """;
 
   private static final String DELETE_COMMENTS =
       "DELETE FROM tms_test_case_execution_comment WHERE execution_id IN (:ids)";
@@ -56,9 +57,9 @@ public class CleanTmsAttachmentJob extends BaseCleanJob {
 
   private static final String DELETE_ORPHAN_FOLDER_ITEMS =
       """
-      DELETE FROM tms_test_folder_test_item fti
-      WHERE NOT EXISTS (SELECT 1 FROM launch l WHERE l.id = fti.launch_id)
-      """;
+          DELETE FROM tms_test_folder_test_item fti
+          WHERE NOT EXISTS (SELECT 1 FROM launch l WHERE l.id = fti.launch_id)
+          """;
 
   /**
    * Moves the given attachments to attachment_deletion unless they are still used somewhere. A new id from
@@ -66,54 +67,84 @@ public class CleanTmsAttachmentJob extends BaseCleanJob {
    */
   private static final String MOVE_ATTACHMENTS =
       """
-      WITH moved_rows AS (
-        DELETE FROM tms_attachment a
-        WHERE a.id IN (:ids)
-          AND NOT EXISTS (SELECT 1 FROM tms_test_case_execution_comment_attachment x
-                          WHERE x.attachment_id = a.id)
-          AND NOT EXISTS (SELECT 1 FROM tms_step_attachment x WHERE x.attachment_id = a.id)
-          AND NOT EXISTS (SELECT 1 FROM tms_text_manual_scenario_attachment x
-                          WHERE x.attachment_id = a.id)
-          AND NOT EXISTS (SELECT 1 FROM tms_manual_scenario_preconditions_attachment x
-                          WHERE x.attachment_id = a.id)
-        RETURNING a.path_to_file, a.thumbnail_path, a.created_at
-      )
-      INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date, deletion_date)
-      SELECT nextval('attachment_id_seq'), path_to_file, thumbnail_path, created_at,
-        NOW() AT TIME ZONE 'UTC'
-      FROM moved_rows
-      """;
+          WITH moved_rows AS (
+            DELETE FROM tms_attachment a
+            WHERE a.id IN (:ids)
+              AND NOT EXISTS (SELECT 1 FROM tms_test_case_execution_comment_attachment x
+                              WHERE x.attachment_id = a.id)
+              AND NOT EXISTS (SELECT 1 FROM tms_step_attachment x WHERE x.attachment_id = a.id)
+              AND NOT EXISTS (SELECT 1 FROM tms_text_manual_scenario_attachment x
+                              WHERE x.attachment_id = a.id)
+              AND NOT EXISTS (SELECT 1 FROM tms_manual_scenario_preconditions_attachment x
+                              WHERE x.attachment_id = a.id)
+            RETURNING a.path_to_file, a.thumbnail_path, a.created_at
+          )
+          INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date, deletion_date)
+          SELECT nextval('attachment_id_seq'), path_to_file, thumbnail_path, created_at,
+            NOW() AT TIME ZONE 'UTC'
+          FROM moved_rows
+          """;
 
   /**
-   * Moves comment attachments of test executions older than the date, except ones of IMPORTANT
-   * launches or still used somewhere else.
+   * Moves comment attachments of test executions older than the date, except ones of IMPORTANT launches or still used
+   * somewhere else.
    */
   private static final String MOVE_EXPIRED_ATTACHMENTS =
       """
-      WITH moved_rows AS (
-        DELETE FROM tms_attachment a
-        WHERE a.project_id = ?
-          AND a.created_at <= ?::TIMESTAMP
-          AND EXISTS (SELECT 1 FROM tms_test_case_execution_comment_attachment x
-                      WHERE x.attachment_id = a.id)
-          AND NOT EXISTS (SELECT 1 FROM tms_test_case_execution_comment_attachment x
-                          JOIN tms_test_case_execution_comment c ON c.id = x.execution_comment_id
-                          JOIN tms_test_case_execution e ON e.id = c.execution_id
-                          JOIN launch l ON l.id = e.launch_id
-                          WHERE x.attachment_id = a.id AND l.retention_policy = 'IMPORTANT')
-          AND NOT EXISTS (SELECT 1 FROM tms_step_attachment x WHERE x.attachment_id = a.id)
-          AND NOT EXISTS (SELECT 1 FROM tms_text_manual_scenario_attachment x
+          WITH moved_rows AS (
+            DELETE FROM tms_attachment a
+            WHERE a.project_id = ?
+              AND a.created_at <= ?::TIMESTAMP
+              AND EXISTS (SELECT 1 FROM tms_test_case_execution_comment_attachment x
                           WHERE x.attachment_id = a.id)
-          AND NOT EXISTS (SELECT 1 FROM tms_manual_scenario_preconditions_attachment x
-                          WHERE x.attachment_id = a.id)
-        RETURNING a.path_to_file, a.thumbnail_path, a.created_at
-      )
-      INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date,
-        deletion_date)
-      SELECT nextval('attachment_id_seq'), path_to_file, thumbnail_path, created_at,
-        NOW() AT TIME ZONE 'UTC'
-      FROM moved_rows
-      """;
+              AND NOT EXISTS (SELECT 1 FROM tms_test_case_execution_comment_attachment x
+                              JOIN tms_test_case_execution_comment c ON c.id = x.execution_comment_id
+                              JOIN tms_test_case_execution e ON e.id = c.execution_id
+                              JOIN launch l ON l.id = e.launch_id
+                              WHERE x.attachment_id = a.id AND l.retention_policy = 'IMPORTANT')
+              AND NOT EXISTS (SELECT 1 FROM tms_step_attachment x WHERE x.attachment_id = a.id)
+              AND NOT EXISTS (SELECT 1 FROM tms_text_manual_scenario_attachment x
+                              WHERE x.attachment_id = a.id)
+              AND NOT EXISTS (SELECT 1 FROM tms_manual_scenario_preconditions_attachment x
+                              WHERE x.attachment_id = a.id)
+            RETURNING a.path_to_file, a.thumbnail_path, a.created_at
+          )
+          INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date,
+            deletion_date)
+          SELECT nextval('attachment_id_seq'), path_to_file, thumbnail_path, created_at,
+            NOW() AT TIME ZONE 'UTC'
+          FROM moved_rows
+          """;
+
+  /**
+   * Moves attachments that are not referenced by any TMS entity anymore (e.g. the test case, step or comment was
+   * deleted) to attachment_deletion. Recently created ones are skipped, as they can be uploaded but not linked yet.
+   */
+  private static final String MOVE_UNLINKED_ATTACHMENTS =
+      """
+          WITH moved_rows AS (
+            DELETE FROM tms_attachment a
+            WHERE a.id IN (
+              SELECT t.id FROM tms_attachment t
+              WHERE t.created_at <= ?::TIMESTAMP
+                AND NOT EXISTS (SELECT 1 FROM tms_test_case_execution_comment_attachment x
+                                WHERE x.attachment_id = t.id)
+                AND NOT EXISTS (SELECT 1 FROM tms_step_attachment x WHERE x.attachment_id = t.id)
+                AND NOT EXISTS (SELECT 1 FROM tms_text_manual_scenario_attachment x
+                                WHERE x.attachment_id = t.id)
+                AND NOT EXISTS (SELECT 1 FROM tms_manual_scenario_preconditions_attachment x
+                                WHERE x.attachment_id = t.id)
+              LIMIT ?)
+            RETURNING a.path_to_file, a.thumbnail_path, a.created_at
+          )
+          INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date,
+            deletion_date)
+          SELECT nextval('attachment_id_seq'), path_to_file, thumbnail_path, created_at,
+            NOW() AT TIME ZONE 'UTC'
+          FROM moved_rows
+          """;
+
+  private static final Duration UNLINKED_GRACE_PERIOD = Duration.ofDays(1);
 
   private final int batchSize;
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
@@ -133,6 +164,18 @@ public class CleanTmsAttachmentJob extends BaseCleanJob {
   public void execute() {
     moveExpiredAttachments();
     removeOrphanExecutions();
+    removeUnlinkedAttachments();
+  }
+
+  void removeUnlinkedAttachments() {
+    LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(UNLINKED_GRACE_PERIOD);
+    int movedTotal = 0;
+    int moved;
+    do {
+      moved = jdbcTemplate.update(MOVE_UNLINKED_ATTACHMENTS, lessThanDate, batchSize);
+      movedTotal += moved;
+    } while (moved > 0);
+    LOGGER.info("Moved {} unlinked TMS attachments to the deletion table", movedTotal);
   }
 
   void moveExpiredAttachments() {
