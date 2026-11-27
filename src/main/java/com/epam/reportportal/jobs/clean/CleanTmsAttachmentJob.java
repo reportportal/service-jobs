@@ -1,6 +1,5 @@
 package com.epam.reportportal.jobs.clean;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -86,8 +85,8 @@ public class CleanTmsAttachmentJob extends BaseCleanJob {
           """;
 
   /**
-   * Moves comment attachments of test executions older than the date, except ones of IMPORTANT launches or still used
-   * somewhere else.
+   * Moves comment attachments of test executions older than the date, except ones of IMPORTANT launches. Links of
+   * the attachment to steps and scenarios are not checked, they are removed together with the attachment.
    */
   private static final String MOVE_EXPIRED_ATTACHMENTS =
       """
@@ -102,11 +101,6 @@ public class CleanTmsAttachmentJob extends BaseCleanJob {
                               JOIN tms_test_case_execution e ON e.id = c.execution_id
                               JOIN launch l ON l.id = e.launch_id
                               WHERE x.attachment_id = a.id AND l.retention_policy = 'IMPORTANT')
-              AND NOT EXISTS (SELECT 1 FROM tms_step_attachment x WHERE x.attachment_id = a.id)
-              AND NOT EXISTS (SELECT 1 FROM tms_text_manual_scenario_attachment x
-                              WHERE x.attachment_id = a.id)
-              AND NOT EXISTS (SELECT 1 FROM tms_manual_scenario_preconditions_attachment x
-                              WHERE x.attachment_id = a.id)
             RETURNING a.path_to_file, a.thumbnail_path, a.created_at
           )
           INSERT INTO attachment_deletion (id, file_id, thumbnail_id, creation_attachment_date,
@@ -118,7 +112,7 @@ public class CleanTmsAttachmentJob extends BaseCleanJob {
 
   /**
    * Moves attachments that are not referenced by any TMS entity anymore (e.g. the test case, step or comment was
-   * deleted) to attachment_deletion. Recently created ones are skipped, as they can be uploaded but not linked yet.
+   * deleted) to attachment_deletion.
    */
   private static final String MOVE_UNLINKED_ATTACHMENTS =
       """
@@ -126,8 +120,7 @@ public class CleanTmsAttachmentJob extends BaseCleanJob {
             DELETE FROM tms_attachment a
             WHERE a.id IN (
               SELECT t.id FROM tms_attachment t
-              WHERE t.created_at <= ?::TIMESTAMP
-                AND NOT EXISTS (SELECT 1 FROM tms_test_case_execution_comment_attachment x
+              WHERE NOT EXISTS (SELECT 1 FROM tms_test_case_execution_comment_attachment x
                                 WHERE x.attachment_id = t.id)
                 AND NOT EXISTS (SELECT 1 FROM tms_step_attachment x WHERE x.attachment_id = t.id)
                 AND NOT EXISTS (SELECT 1 FROM tms_text_manual_scenario_attachment x
@@ -143,8 +136,6 @@ public class CleanTmsAttachmentJob extends BaseCleanJob {
             NOW() AT TIME ZONE 'UTC'
           FROM moved_rows
           """;
-
-  private static final Duration UNLINKED_GRACE_PERIOD = Duration.ofDays(1);
 
   private final int batchSize;
   private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
@@ -163,16 +154,15 @@ public class CleanTmsAttachmentJob extends BaseCleanJob {
   @Transactional
   public void execute() {
     moveExpiredAttachments();
-    removeOrphanExecutions();
     removeUnlinkedAttachments();
+    removeOrphanExecutions();
   }
 
   void removeUnlinkedAttachments() {
-    LocalDateTime lessThanDate = LocalDateTime.now(ZoneOffset.UTC).minus(UNLINKED_GRACE_PERIOD);
     int movedTotal = 0;
     int moved;
     do {
-      moved = jdbcTemplate.update(MOVE_UNLINKED_ATTACHMENTS, lessThanDate, batchSize);
+      moved = jdbcTemplate.update(MOVE_UNLINKED_ATTACHMENTS, batchSize);
       movedTotal += moved;
     } while (moved > 0);
     LOGGER.info("Moved {} unlinked TMS attachments to the deletion table", movedTotal);

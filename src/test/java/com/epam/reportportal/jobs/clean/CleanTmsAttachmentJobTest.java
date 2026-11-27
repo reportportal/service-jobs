@@ -81,13 +81,12 @@ class CleanTmsAttachmentJobTest {
   @Test
   void executeMovesUnlinkedAttachmentsUntilNothingLeft() {
     when(jdbcTemplate.queryForList(anyString(), eq(Long.class), eq(100))).thenReturn(List.of());
-    lenient().when(jdbcTemplate.update(contains("t.created_at <="), any(LocalDateTime.class), eq(100)))
+    lenient().when(jdbcTemplate.update(contains("SELECT t.id FROM tms_attachment t"), eq(100)))
         .thenReturn(100).thenReturn(7).thenReturn(0);
 
     job.execute();
 
-    verify(jdbcTemplate, times(3)).update(contains("t.created_at <="), any(LocalDateTime.class),
-        eq(100));
+    verify(jdbcTemplate, times(3)).update(contains("SELECT t.id FROM tms_attachment t"), eq(100));
   }
 
   @Test
